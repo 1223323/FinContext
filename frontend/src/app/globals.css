@@ -1,0 +1,770 @@
+@import "tailwindcss";
+
+/* =========================================================
+   FinContext — Design System (Tailwind CSS v4)
+   "Editorial terminal" — restrained, sharp, fast.
+   No gradients, no glassmorphism, no glow shadows. Borders
+   carry structure; one accent used sparingly; numbers are
+   the loudest thing on screen.
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   Theme tokens
+   --------------------------------------------------------- */
+@theme {
+  /* Surfaces — true neutrals, near-black base. The blue-navy
+     tint is gone; this reads as "instrument", not "template". */
+  --color-bg-primary: #0a0a0c;
+  --color-bg-secondary: #121214;
+  --color-bg-card: #151517;
+  --color-bg-card-hover: #1c1c1f;
+
+  /* One accent (indigo). Used for: active nav, the single
+     primary CTA per view, key figures. Not decoration. */
+  --color-accent-primary: #6366f1;
+  --color-accent-secondary: #818cf8;
+  --color-accent-blue: #6366f1;     /* alias → primary; kept so old refs don't break */
+  /* Quiet secondary, only for categorical distinction (e.g. sector vs holding). */
+  --color-accent-cyan: #2da8be;
+  /* Semantic — reserved strictly for P&L / direction. */
+  --color-accent-green: #2ebd6b;
+  --color-accent-red: #e5484d;
+  --color-accent-amber: #d99a2b;
+
+  /* Text — three tiers, tighter contrast steps. */
+  --color-text-primary: #ededee;
+  --color-text-secondary: #9a9aa3;
+  --color-text-muted: #66666e;
+
+  /* Typography — single source of truth for the whole product.
+     • sans  → all body text, headings, UI chrome (Inter)
+     • serif → editorial prose, quotes, headlines (Georgia stack)
+     • mono  → labels, tickers, numbers, code-like data
+     Components should reference these via var(...) instead of inlining
+     font stacks so a future font swap is one edit. */
+  --font-sans:  var(--font-inter, 'Inter', system-ui, -apple-system, sans-serif);
+  --font-serif: 'Georgia', 'Iowan Old Style', 'Apple Garamond', 'Times New Roman', serif;
+  --font-mono:  ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* ---------------------------------------------------------
+   Base layer
+   --------------------------------------------------------- */
+@layer base {
+  :root {
+    /* `--bg-glass` kept as a name (many components reference it) but it is
+       now a SOLID surface — glassmorphism removed for clarity + speed. */
+    --bg-glass: #151517;
+    --border-subtle: rgba(255, 255, 255, 0.07);
+    --border-strong: rgba(255, 255, 255, 0.12);
+    --border-active: rgba(99, 102, 241, 0.45);
+    /* One subtle shadow tier. No 24px ambient blur, no glow. */
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.5);
+    --shadow-glow: none;             /* killed — kept as no-op for old refs */
+    /* Radii — editorial, not bubbly. */
+    --radius-card: 10px;
+    --radius-control: 8px;
+    --radius-pill: 6px;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+    /* Tabular numerals everywhere by default — this is a numbers product. */
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.006em;
+  }
+
+  /* Form controls don't inherit font-family by default in some browsers.
+     Force them to so labels, buttons, inputs and selects all read in the
+     product's voice instead of the user-agent fallback. */
+  button, input, select, textarea {
+    font-family: inherit;
+  }
+
+  /* Scrollbar — thin, neutral, unobtrusive. */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.18);
+  }
+
+  /* Crisp focus ring — accessible without the glow. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent-primary);
+    outline-offset: 1px;
+  }
+}
+
+/* ---------------------------------------------------------
+   Keyframes — kept deliberately few. Motion is quiet.
+   --------------------------------------------------------- */
+@keyframes blink-caret {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* One entrance animation. Subtle 6px rise — not a 16px lurch. */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Live-status dot — a gentle breath, no scale-jump. */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ---------------------------------------------------------
+   Utility classes
+   --------------------------------------------------------- */
+/* The workhorse surface. Solid fill + hairline border + 10px radius.
+   No backdrop blur, no glow. This is what makes it look "designed". */
+@utility glass-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+}
+
+/* "Active" emphasis is now a slightly stronger border — no box-shadow glow. */
+@utility glow-border {
+  border: 1px solid var(--border-active);
+}
+
+@utility typing-cursor {
+  &::after {
+    content: '▊';
+    animation: blink-caret 0.8s infinite;
+    color: var(--color-accent-primary);
+    margin-left: 2px;
+  }
+}
+
+@utility animate-fade-in {
+  animation: fadeInUp 0.28s ease-out forwards;
+}
+
+@utility animate-fade-up {
+  animation: fadeInUp 0.28s ease-out forwards;
+}
+
+@utility pulse-dot {
+  animation: pulse-dot 2.4s ease-in-out infinite;
+}
+
+@utility shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-card) 25%,
+    var(--color-bg-card-hover) 50%,
+    var(--color-bg-card) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+
+/* living-row — micro-interaction for clickable list rows. A 1px lift +
+   brighter hairline on hover, and a settle on :active so it reads on touch
+   too (mobile has no hover). Transform/border only — cheap to composite. */
+@utility living-row {
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+  &:hover {
+    transform: translateY(-1px);
+    border-color: var(--border-strong, rgba(255,255,255,0.16));
+  }
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+/* Respect reduced-motion: kill entrance + lift animation for users who ask. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ---------------------------------------------------------
+   Backwards-compat no-ops + downgrades.
+   These utilities are referenced across components. Rather than
+   sweep every call site, we redefine them as quiet/no-op so the
+   redesign propagates without breaking class references.
+   --------------------------------------------------------- */
+@keyframes ringFill {
+  from { stroke-dashoffset: 283; }
+}
+
+/* countUp / slideIn — downgraded to the same quiet fade. No scale-pop,
+   no 24px slide. Calmer + faster. */
+@utility animate-count-up {
+  animation: fadeInUp 0.28s ease-out forwards;
+}
+
+@utility animate-slide-in {
+  animation: fadeInUp 0.28s ease-out forwards;
+}
+
+/* Glow pulse — killed. `animation: none` so existing class refs are harmless
+   (Tailwind v4 rejects an empty @utility block, so this is the no-op form). */
+@utility animate-pulse-glow {
+  animation: none;
+}
+
+/* gradient-text — now a solid colour. The gradient was the loudest
+   piece of "AI slop"; a confident solid reads as more premium. */
+@utility gradient-text {
+  color: var(--color-text-primary);
+}
+
+/* Globe panel slide — downgraded to the shared quiet fade. */
+@keyframes slideInPanel {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* markerPulse — strip the glow box-shadow, keep a faint scale tick. */
+@keyframes markerPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.15); }
+}
+
+/* ---------------------------------------------------------
+   Responsive Layout System
+   --------------------------------------------------------- */
+
+/* --- App Shell --- */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--color-bg-primary);
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 240px;
+  min-width: 0;
+}
+
+.content-area {
+  padding: 24px;
+  overflow-x: hidden;
+}
+
+/* --- Sidebar --- */
+.sidebar-desktop {
+  display: flex;
+}
+
+.sidebar-mobile {
+  display: none;
+}
+
+/* --- Responsive Grid Utilities --- */
+.responsive-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.responsive-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.responsive-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.responsive-grid-sidebar {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 24px;
+}
+
+.responsive-grid-holdings {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 24px;
+}
+
+.responsive-grid-intel {
+  display: grid;
+  grid-template-columns: 280px 1fr 1fr;
+  gap: 20px;
+}
+
+/* --- Premium dashboard: portfolio strip + brief strip + 2-pane main area.
+   Page does NOT scroll on desktop. Only the panes' bodies scroll internally. --- */
+.dashboard-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: calc(100vh - 120px);
+  min-height: 560px;
+  overflow: hidden;
+}
+.dashboard-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+.dashboard-pane {
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+}
+.dashboard-pane > * {
+  flex: 1;
+  min-height: 0;
+}
+
+/* --- Dashboard component responsive defaults (desktop) --- */
+.dash-strip { /* base shared by portfolio + brief strips */ }
+.dash-portfolio-strip .dps-cta { flex-shrink: 0; }
+.dash-brief-strip .dbs-headline { /* default: single-line ellipsis on desktop */ }
+
+.responsive-grid-dd-hero {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 24px;
+}
+
+/* --- Header --- */
+.header-responsive {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-search {
+  width: 260px;
+}
+
+/* --- Globe --- */
+.globe-container {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.globe-container.no-selection {
+  flex-direction: column;
+  align-items: center;
+}
+
+.globe-left {
+  flex-shrink: 0;
+  width: 340px;
+}
+
+.globe-left.full-width {
+  width: 100%;
+}
+
+.globe-right {
+  flex: 1;
+  min-width: 0;
+}
+
+.market-status-bar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* --- Portfolio --- */
+.portfolio-header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* --- Analysis result layout --- */
+.valuation-result {
+  display: flex;
+  gap: 32px;
+  align-items: stretch;
+}
+
+.valuation-left {
+  flex: 1;
+  border-right: 1px solid var(--border-subtle);
+  padding-right: 32px;
+}
+
+.valuation-right {
+  flex: 1.5;
+}
+
+/* --- Simulator row --- */
+.simulator-row {
+  display: flex;
+  gap: 12px;
+}
+
+.simulator-input {
+  flex: 1;
+}
+
+/* --- DD Agent header --- */
+.dd-header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* --- Financial statement tabs --- */
+.fin-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.fin-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.fin-tab-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* --- Section header with actions --- */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+/* --- Modal --- */
+.modal-content {
+  width: 420px;
+  max-width: 90vw;
+}
+
+/* ---------------------------------------------------------
+   TABLET: 769px — 1024px
+   --------------------------------------------------------- */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .main-content {
+    margin-left: 72px;
+  }
+
+  .content-area {
+    padding: 20px;
+  }
+
+  .responsive-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .responsive-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .responsive-grid-intel {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .dashboard-main {
+    grid-template-columns: minmax(0, 1fr) 220px;
+    gap: 10px;
+  }
+
+  /* Portfolio strip: tighten font, stack movers below P&L if needed */
+  .dash-portfolio-strip {
+    padding: 12px 16px !important;
+    gap: 12px !important;
+  }
+  .dash-portfolio-strip .dps-movers {
+    flex: 1 1 100% !important;
+    order: 3;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+  }
+
+  /* News feed header: filters wrap below if needed */
+  .dash-news-feed .dnf-header > div:last-child {
+    flex-wrap: wrap;
+  }
+
+  .responsive-grid-holdings {
+    grid-template-columns: 1fr;
+  }
+
+  .globe-left {
+    width: 280px;
+  }
+
+  .header-search {
+    width: 200px;
+  }
+}
+
+/* ---------------------------------------------------------
+   MOBILE: ≤ 768px
+   --------------------------------------------------------- */
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 0;
+    padding-bottom: 72px;
+  }
+
+  .content-area {
+    padding: 16px;
+  }
+
+  .sidebar-desktop {
+    display: none;
+  }
+
+  .sidebar-mobile {
+    display: flex;
+  }
+
+  /* --- All grids become single column --- */
+  .responsive-grid-4,
+  .responsive-grid-3,
+  .responsive-grid-2,
+  .responsive-grid-sidebar,
+  .responsive-grid-holdings,
+  .responsive-grid-intel,
+  .responsive-grid-dd-hero,
+  .dashboard-main {
+    grid-template-columns: 1fr;
+  }
+
+  /* On mobile, drop the viewport-locked height — each pane gets its natural
+     height and the page scrolls normally. The split layout only makes sense
+     on tablet+. */
+  .dashboard-shell {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+  .dashboard-pane {
+    height: auto;
+    min-height: 360px;
+  }
+
+  /* --- Mobile portfolio strip: 2 clean rows.
+     Row 1: P&L block + CTA button. Row 2: movers full-width. --- */
+  .dash-portfolio-strip {
+    padding: 12px 14px !important;
+    gap: 10px !important;
+  }
+  .dash-portfolio-strip .dps-pnl {
+    flex: 1 1 auto !important;
+    min-width: 0;
+    gap: 10px !important;
+  }
+  .dash-portfolio-strip .dps-pnl > div > div:last-child > span:first-child {
+    /* P&L number — slightly smaller on mobile */
+    font-size: 18px !important;
+  }
+  .dash-portfolio-strip .dps-movers {
+    flex: 1 1 100% !important;
+    order: 3;
+    justify-content: flex-start !important;
+    gap: 14px !important;
+    padding-top: 4px;
+    border-top: 1px dashed var(--border-subtle);
+  }
+  .dash-portfolio-strip .dps-cta {
+    padding: 6px 10px !important;
+    font-size: 10px !important;
+  }
+
+  /* --- Mobile brief strip: allow 2-line wrap, drop label separator --- */
+  .dash-brief-strip {
+    padding: 11px 14px !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    flex-wrap: wrap;
+  }
+  .dash-brief-strip .dbs-sep { display: none; }
+  .dash-brief-strip .dbs-label {
+    flex: 1 1 auto;
+    align-self: flex-start;
+  }
+  .dash-brief-strip .dbs-cta {
+    align-self: flex-start;
+  }
+  .dash-brief-strip .dbs-headline {
+    flex: 1 1 100% !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    font-size: 12.5px !important;
+    line-height: 1.45 !important;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  /* --- Mobile news feed: tighter padding, headline a hair smaller --- */
+  .dash-news-feed {
+    padding: 12px 12px 14px !important;
+  }
+  .dash-news-feed .dnf-header {
+    padding-bottom: 10px !important;
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  .dash-news-feed .dnf-header > div:last-child {
+    justify-content: flex-start;
+  }
+
+  /* --- Mobile universe rail: shorter min-height, two-column ticker grid --- */
+  .dash-universe-rail {
+    min-height: 260px !important;
+    padding: 12px 6px !important;
+  }
+
+  .responsive-grid-4 { gap: 12px; }
+  .responsive-grid-3 { gap: 12px; }
+  .responsive-grid-2 { gap: 16px; }
+
+  /* --- Header --- */
+  .header-responsive {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .header-search {
+    width: 100%;
+    flex: 1;
+  }
+
+  /* --- Globe --- */
+  .globe-container,
+  .globe-container.no-selection {
+    flex-direction: column;
+  }
+
+  .globe-left,
+  .globe-left.full-width {
+    width: 100%;
+  }
+
+  .globe-right {
+    max-height: none;
+  }
+
+  .market-status-bar {
+    display: none;
+  }
+
+  /* --- Portfolio --- */
+  .portfolio-header-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  /* --- Valuation result --- */
+  .valuation-result {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .valuation-left {
+    border-right: none;
+    padding-right: 0;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 20px;
+  }
+
+  /* --- Simulator --- */
+  .simulator-row {
+    flex-direction: column;
+  }
+
+  /* --- DD Agent header --- */
+  .dd-header-actions {
+    flex-wrap: wrap;
+  }
+
+  /* --- Financial tabs --- */
+  .fin-tab-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 16px;
+  }
+
+  .fin-tabs {
+    width: 100%;
+  }
+
+  /* --- Modal --- */
+  .modal-content {
+    width: 95vw;
+  }
+}
