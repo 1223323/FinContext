@@ -22,7 +22,7 @@ export const API_BASE = (() => {
   }
   if (typeof window !== "undefined" && window.location?.hostname) {
     if (window.location.hostname === "financial.jashchauhan.tech") {
-      return "https://fincontext.onrender.com";
+      return "https://fincontext-ulqw.onrender.com";
     }
     return `${window.location.protocol}//${window.location.hostname}:8000`;
   }
