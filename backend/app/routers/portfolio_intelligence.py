@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Portfolio Intelligence Router
 ==============================
@@ -15,7 +17,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.core.compliance import with_disclaimer
 from app.services import (
@@ -40,12 +42,12 @@ class PositionIn(BaseModel):
 
 
 class IntelRequest(BaseModel):
-    positions: list[PositionIn]
+    positions: list[PositionIn] = Field(..., max_length=200)
     force_refresh: bool = False
 
 
 class MoversRequest(BaseModel):
-    positions: list[PositionIn]
+    positions: list[PositionIn] = Field(..., max_length=200)
     force_refresh: bool = False
 
 
@@ -1732,9 +1734,8 @@ async def news_feed(req: NewsFeedRequest, background: BackgroundTasks):
     try:
         data = await asyncio.wait_for(
             asyncio.to_thread(
-                # 2400 tokens: 20 items × ~120 tokens each. Reduced from 3500
-                # after capping items at 20 → faster LLM completion.
-                ai_client.generate_grounded_json, task, annotation_ctx, schema, 2400
+                # 4000 tokens to ensure the JSON does not get truncated by LLM output limits.
+                ai_client.generate_grounded_json, task, annotation_ctx, schema, 4000
             ),
             # 110s on Render's free tier — OpenAI from Render is 2-3× slower
             # than from a laptop and the request retry loop after a premature

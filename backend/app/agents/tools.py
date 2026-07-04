@@ -50,6 +50,9 @@ def _build_tools():
             return _json(fundamentals.get_ratios(ticker))
         except LookupError as e:
             return _json({"error": str(e)})
+        except Exception as e:
+            logger.exception("get_company_ratios tool failed")
+            return _json({"error": f"fetch_failed: {e}"})
 
     @tool("get_company_peers")
     def get_company_peers(ticker: str) -> str:
@@ -58,6 +61,9 @@ def _build_tools():
             return _json(fundamentals.get_peers(ticker))
         except LookupError as e:
             return _json({"error": str(e)})
+        except Exception as e:
+            logger.exception("get_company_peers tool failed")
+            return _json({"error": f"fetch_failed: {e}"})
 
     @tool("get_price_history")
     def get_price_history(ticker: str, period: str = "1mo") -> str:

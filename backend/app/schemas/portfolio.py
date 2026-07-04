@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Portfolio request/response shapes — single source of truth.
 
 Today the same PositionIn class is re-declared in routers/portfolio.py,

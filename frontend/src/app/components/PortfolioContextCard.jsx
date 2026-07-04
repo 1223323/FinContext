@@ -97,7 +97,7 @@ export default function PortfolioContextCard({ positions }) {
   const [detailTicker, setDetailTicker] = useState(null);     // Today MoverRow modal
   const [watchDetail, setWatchDetail] = useState(null);       // Tomorrow watch item modal
   const [themeDetail, setThemeDetail] = useState(null);       // Tomorrow theme modal
-  const autoRanRef = useRef(false);                           // guard against double-fire
+  const autoRanRef = useRef(null);                            // guard against double-fire
 
   const run = async (silent = false) => {
     if (!positions?.length) return;
@@ -146,9 +146,9 @@ export default function PortfolioContextCard({ positions }) {
   // the user opens the dashboard, not require a button click every visit.
   useEffect(() => {
     if (!positions?.length) return;
-    if (autoRanRef.current) return;
     const key = _contextCacheKey(positions);
     if (!key) return;
+    if (autoRanRef.current === key) return;
 
     try {
       const raw = localStorage.getItem(key);
@@ -157,13 +157,13 @@ export default function PortfolioContextCard({ positions }) {
         if (parsed?.data && Date.now() - (parsed.ts || 0) < CONTEXT_CACHE_MAX_AGE_MS) {
           setData(parsed.data);
           setStale(true);
-          autoRanRef.current = true;
+          autoRanRef.current = key;
           return;
         }
       }
     } catch { /* bad JSON — fall through to auto-run */ }
 
-    autoRanRef.current = true;
+    autoRanRef.current = key;
     run(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [positions]);

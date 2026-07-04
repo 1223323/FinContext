@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 """
 Cookie helpers — centralize how auth cookies are set / cleared.
 """
 
+# pyrefly: ignore [missing-import]
 from fastapi import Response
 
 from app.core.config import settings

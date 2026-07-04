@@ -45,11 +45,14 @@ def get_llm():
     if _llm_singleton is not None:
         return _llm_singleton
 
-    api_key = os.getenv("GROQ_API_KEY")
-    if not api_key:
+    openai_key = os.getenv("OPENAI_API_KEY")
+    xai_key = os.getenv("XAI_API_KEY")
+    groq_key = os.getenv("GROQ_API_KEY")
+
+    if not openai_key and not xai_key and not groq_key:
         raise RuntimeError(
-            "GROQ_API_KEY not set — agent crews are disabled. "
-            "Either set it in .env or fall back to the legacy non-agent path."
+            "None of OPENAI_API_KEY, XAI_API_KEY, or GROQ_API_KEY is set — agent crews are disabled. "
+            "Please set one of them in your .env file."
         )
 
     try:
@@ -59,7 +62,16 @@ def get_llm():
             "crewai not installed. pip install crewai crewai-tools (see requirements.txt)."
         ) from e
 
-    model = os.getenv("CREWAI_MODEL", "groq/" + os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"))
+    if openai_key:
+        model = os.getenv("CREWAI_MODEL", "openai/" + os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+        api_key = openai_key
+    elif xai_key:
+        model = os.getenv("CREWAI_MODEL", "xai/" + os.getenv("XAI_MODEL", "grok-3-mini"))
+        api_key = xai_key
+    else:
+        model = os.getenv("CREWAI_MODEL", "groq/" + os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"))
+        api_key = groq_key
+
     _llm_singleton = LLM(
         model=model,
         api_key=api_key,
@@ -71,10 +83,16 @@ def get_llm():
 
 def is_available() -> bool:
     """Cheap check the router can use to decide whether to take the agent path."""
-    if not os.getenv("GROQ_API_KEY"):
+    if not os.getenv("GROQ_API_KEY") and not os.getenv("OPENAI_API_KEY") and not os.getenv("XAI_API_KEY"):
         return False
     try:
         import crewai  # noqa: F401
         return True
     except ImportError:
         return False
+
+
+def _reset_llm():
+    """Reset the LLM singleton. Useful for testing/resiliency."""
+    global _llm_singleton
+    _llm_singleton = None

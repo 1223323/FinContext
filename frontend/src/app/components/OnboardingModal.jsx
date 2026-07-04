@@ -602,14 +602,6 @@ export default function OnboardingModal({ open, onClose, onComplete, userName })
                 : `Track ${selected.length} ${selected.length === 1 ? "stock" : "stocks"} →`}
           </button>
         </div>
-
-        <style jsx>{`
-          @keyframes oc-pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50%      { opacity: 0.45; transform: scale(1.4); }
-          }
-          :global(.oc-pulse-dot) { animation: oc-pulse 1.6s ease-in-out infinite; }
-        `}</style>
       </div>
     </div>
   );

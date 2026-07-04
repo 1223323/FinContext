@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Advanced Analysis Router
 ========================
@@ -748,10 +750,11 @@ def _compute_pretrade_checks(context: dict, tech: dict | None) -> list[dict]:
             status = "FAIL"; why = "RSI ≥ 80 — strongly overbought; recent buyers have priced in a lot."
         elif rsi >= 70:
             status = "CAUTION"; why = "RSI ≥ 70 — overbought; pullback risk elevated short-term."
-        elif rsi <= 20:
-            status = "CAUTION"; why = "RSI ≤ 20 — deeply oversold; may bounce but could also indicate distress."
         elif rsi <= 30:
-            status = "CAUTION"; why = "RSI ≤ 30 — oversold; technical bounce possible but check the why."
+            if rsi <= 20:
+                status = "CAUTION"; why = "RSI ≤ 20 — deeply oversold; may bounce but could also indicate distress."
+            else:
+                status = "CAUTION"; why = "RSI ≤ 30 — oversold; technical bounce possible but check the why."
         else:
             status = "PASS"; why = "RSI in healthy 30–70 range — neither extended nor washed out."
         checks.append(_check("rsi", "Price not extended", status, f"RSI {round(rsi)}", why))

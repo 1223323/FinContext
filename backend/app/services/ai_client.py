@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Shared AI client.
 
@@ -6,15 +8,17 @@ generate_grounded_json, verify_claims).
 
 Provider precedence:
   1. OpenAI  — when OPENAI_API_KEY is set (recommended for production quality)
-  2. Groq    — when GROQ_API_KEY is set (fallback / cheap inference)
+  2. Grok    — when XAI_API_KEY is set (xAI / Grok models)
+  3. Groq    — when GROQ_API_KEY is set (fallback / cheap inference)
 
-Set OPENAI_MODEL or GROQ_MODEL in env to control which model is used. Both SDKs
-expose the same chat.completions.create() shape, so the call sites are identical.
+Set OPENAI_MODEL, XAI_MODEL, or GROQ_MODEL in env to control which model is used.
+All three SDKs expose the same chat.completions.create() shape, so call sites are identical.
 """
 
 import json
 import os
 import logging
+# pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
@@ -22,6 +26,8 @@ load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+XAI_API_KEY = os.getenv("XAI_API_KEY")
+XAI_MODEL = os.getenv("XAI_MODEL", "grok-3-mini")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
@@ -41,6 +47,20 @@ if OPENAI_API_KEY:
         logger.error(f"Failed to initialize OpenAI client: {e}")
         _client = None
 
+if _client is None and XAI_API_KEY:
+    try:
+        from openai import OpenAI
+        _client = OpenAI(
+            api_key=XAI_API_KEY,
+            base_url="https://api.x.ai/v1"
+        )
+        _provider = "xai"
+        MODEL = XAI_MODEL
+        logger.info(f"Grok client enabled (model={MODEL}).")
+    except Exception as e:
+        logger.error(f"Failed to initialize Grok client: {e}")
+        _client = None
+
 if _client is None and GROQ_API_KEY:
     try:
         from groq import Groq
@@ -53,7 +73,7 @@ if _client is None and GROQ_API_KEY:
         _client = None
 
 if _client is None:
-    logger.warning("No AI key set (OPENAI_API_KEY / GROQ_API_KEY) — AI features disabled.")
+    logger.warning("No AI key set (OPENAI_API_KEY / XAI_API_KEY / GROQ_API_KEY) — AI features disabled.")
 
 
 # Standing instruction injected into every grounded call. Keeps the model from
@@ -74,12 +94,12 @@ def is_available() -> bool:
 
 
 def provider() -> str | None:
-    """Returns 'openai' | 'groq' | None — useful for logs and the /_debug endpoint."""
+    """Returns 'openai' | 'xai' | 'groq' | None — useful for logs and the /_debug endpoint."""
     return _provider
 
 
 def _missing_key_error() -> RuntimeError:
-    return RuntimeError("No AI provider configured (set OPENAI_API_KEY or GROQ_API_KEY).")
+    return RuntimeError("No AI provider configured (set OPENAI_API_KEY, XAI_API_KEY, or GROQ_API_KEY).")
 
 
 def generate_text(

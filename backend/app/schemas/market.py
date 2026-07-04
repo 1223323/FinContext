@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Market data shapes — price history, OHLCV bars."""
 
 from pydantic import BaseModel

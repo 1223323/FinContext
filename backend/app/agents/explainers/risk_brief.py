@@ -81,6 +81,7 @@ def _cache_key(report: dict) -> str:
     """Cache by content of the numeric report — same numbers => same brief."""
     canon = json.dumps(report.get("metrics", {}), sort_keys=True, default=str)
     canon += json.dumps(report.get("concentration", {}), sort_keys=True, default=str)
+    canon += json.dumps(report.get("correlations", {}), sort_keys=True, default=str)
     digest = hashlib.sha256(canon.encode("utf-8")).hexdigest()[:16]
     return llm_cache.make_key("risk_brief", digest)
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Watchlist price-enrichment endpoint.
 Accepts a list of tickers, returns live prices from yfinance.

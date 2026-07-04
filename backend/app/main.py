@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 FinContext API — Main Application
 ==================================
@@ -8,8 +10,10 @@ Run with: uvicorn app.main:app --reload --port 8000
 
 import logging
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.db import init_db
 from app.routers import (
     stocks,
     market,
@@ -25,6 +29,7 @@ from app.routers import (
     outcomes as outcomes_router,
     telegram as telegram_router,
     onboarding as onboarding_router,
+    auth as auth_router,
 )
 from app.core.config import settings
 
@@ -34,12 +39,18 @@ logger = logging.getLogger("uvicorn.error")
 logger.info("CORS_ORIGINS loaded: %r", settings.CORS_ORIGINS)
 logger.info("CORS_ORIGIN_REGEX loaded: %r", settings.CORS_ORIGIN_REGEX)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+
 app = FastAPI(
     title="FinContext API",
     description="AI-powered contextual analysis engine for Indian equities.",
     version="0.5.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -47,7 +58,7 @@ app.add_middleware(
     allow_origins=settings.CORS_ORIGINS,
     allow_origin_regex=settings.CORS_ORIGIN_REGEX,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
 )
 
@@ -75,6 +86,7 @@ app.include_router(embeddings_router.router)
 app.include_router(outcomes_router.router)
 app.include_router(telegram_router.router)
 app.include_router(onboarding_router.router)
+app.include_router(auth_router.router)
 
 
 @app.get("/health", tags=["system"])

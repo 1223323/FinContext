@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Security primitives: password hashing + JWT.
 """

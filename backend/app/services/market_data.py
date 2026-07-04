@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Market Data Service
 ====================
@@ -223,8 +225,8 @@ def get_market_indices() -> list[dict]:
 
     results = []
     for label, symbol in INDEX_MAP.items():
-        cache_key = f"idx_{symbol}"
-        if cache_key in _index_neg_perm or cache_key in _index_neg_transient:
+        symbol_cache_key = f"idx_{symbol}"
+        if symbol_cache_key in _index_neg_perm or symbol_cache_key in _index_neg_transient:
             results.append({"label": label, "value": "—", "change": "—", "positive": True})
             continue
         out, ok = yf_safe.run_with_timeout(_fetch_one_index, symbol, timeout_s=5.0)
@@ -232,9 +234,9 @@ def get_market_indices() -> list[dict]:
             exc = out if isinstance(out, Exception) else None
             kind = yf_safe.classify_error(exc, None if exc is None else "__sentinel__")
             if kind == "permanent":
-                _index_neg_perm[cache_key] = True
+                _index_neg_perm[symbol_cache_key] = True
             else:
-                _index_neg_transient[cache_key] = True
+                _index_neg_transient[symbol_cache_key] = True
             if exc is not None:
                 logger.warning(f"Index fetch failed for {label} ({symbol}): {exc}")
             results.append({"label": label, "value": "—", "change": "—", "positive": True})
@@ -250,5 +252,5 @@ def get_market_indices() -> list[dict]:
             "positive": change_pct >= 0,
         })
 
-    _index_cache[cache_key] = results
+    _index_cache["market_indices"] = results
     return results

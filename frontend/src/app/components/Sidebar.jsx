@@ -10,6 +10,18 @@ import { DashboardIcon, SettingsIcon, TargetIcon } from "./Icons";
  * monogram mark (no gradient block). Active state is a quiet accent: a
  * 2px left rule + faint tinted fill, not a glow.
  */
+function isMarketOpen() {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "numeric", hour12: false, weekday: "short" });
+  const parts = formatter.formatToParts(now);
+  const weekday = parts.find(p => p.type === "weekday")?.value;
+  const hour = parseInt(parts.find(p => p.type === "hour")?.value || "0");
+  const minute = parseInt(parts.find(p => p.type === "minute")?.value || "0");
+  const time = hour + minute / 60;
+  if (weekday === "Sat" || weekday === "Sun") return false;
+  return time >= 9.25 && time < 15.5; // 9:15 to 15:30 IST
+}
+
 export default function Sidebar({ activeNav, onNavChange }) {
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
@@ -296,14 +308,15 @@ export default function Sidebar({ activeNav, onNavChange }) {
               width: "6px",
               height: "6px",
               borderRadius: "50%",
-              background: "var(--color-accent-green)",
+              background: isMarketOpen() ? "var(--color-accent-green)" : "var(--color-text-tertiary)",
+              animation: isMarketOpen() ? undefined : "none",
               display: "inline-block",
               flexShrink: 0,
             }}
           />
           {!isTablet && (
             <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--color-text-secondary)" }}>
-              Market open
+              {isMarketOpen() ? "Market open" : "Market closed"}
             </span>
           )}
         </div>

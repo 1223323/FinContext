@@ -122,18 +122,16 @@ def _verify_supabase_jwt(authorization: str | None) -> str:
 def _check_admin(token: str | None) -> None:
     if not ADMIN_TOKEN:
         raise HTTPException(status_code=503, detail="ADMIN_TOKEN not configured.")
-    if token != ADMIN_TOKEN:
+    if not secrets.compare_digest(token or "", ADMIN_TOKEN):
         raise HTTPException(status_code=401, detail="Invalid admin token.")
 
 
 def _check_webhook_secret(secret: str | None) -> None:
     """Telegram echoes the secret_token we set with setWebhook in this header
-    on every incoming POST. If unset on our side we can't validate; we still
-    accept (useful for local dev) but log a warning."""
+    on every incoming POST."""
     if not TELEGRAM_WEBHOOK_SECRET:
-        logger.warning("TELEGRAM_WEBHOOK_SECRET unset — webhook is unauthenticated")
-        return
-    if secret != TELEGRAM_WEBHOOK_SECRET:
+        raise HTTPException(status_code=503, detail="TELEGRAM_WEBHOOK_SECRET not configured.")
+    if not secrets.compare_digest(secret or "", TELEGRAM_WEBHOOK_SECRET):
         raise HTTPException(status_code=401, detail="Invalid webhook secret.")
 
 

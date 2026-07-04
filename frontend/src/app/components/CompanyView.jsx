@@ -691,12 +691,6 @@ export default function CompanyView({ ticker: initialTicker, onNavigate, onBack,
           <Skeleton h={110} r={12} />
           <Skeleton h={150} r={12} />
           <Skeleton h={220} r={12} />
-          <style jsx>{`
-            @keyframes cv-pulse {
-              0%, 100% { opacity: 1; transform: scale(1); }
-              50%      { opacity: 0.4; transform: scale(1.4); }
-            }
-          `}</style>
         </div>
       )}
 

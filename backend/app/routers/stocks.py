@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Stocks Router
 =============
@@ -215,9 +217,9 @@ async def analyze_stock(ticker: str, request: AnalysisRequest = AnalysisRequest(
 
     meta = TICKER_TO_META.get(ticker, {"name": ticker, "sector": "Unknown"})
 
-    # Ensure seed data has this ticker's info for the LLM engine
+    # Create local variable instead of mutating the global dictionary
     price, change = _get_quote(ticker)
-    STOCKS[ticker] = {
+    stock_info = {
         "name": meta.get("name", ticker),
         "sector": meta.get("sector", "Unknown"),
         "current_price": price,
@@ -235,6 +237,7 @@ async def analyze_stock(ticker: str, request: AnalysisRequest = AnalysisRequest(
     analysis_text = generate_analysis(
         ticker=ticker,
         context_docs=context_docs,
+        stock_info=stock_info,
     )
 
     return AnalysisResponse(

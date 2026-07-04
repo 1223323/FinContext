@@ -24,7 +24,7 @@
  * with the rest of the app's loading vocabulary.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import StockChart from "./StockChart";
 import MissionControlLoader from "./MissionControlLoader";
 
@@ -954,15 +954,21 @@ export default function AnalysisView({ initialTicker, onBack, backLabel = "Back"
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticker, horizon]);
 
+  const searchTimeout = useRef(null);
+
   const handleSearch = async (q) => {
     setSearchQuery(q);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
     if (q.length < 2) { setSearchResults([]); setShowDropdown(false); return; }
-    try {
-      const res = await fetch(`${API_BASE}/api/stocks/search?q=${q}&limit=8`);
-      const data = await res.json();
-      setSearchResults(data);
-      setShowDropdown(true);
-    } catch { setSearchResults([]); }
+    
+    searchTimeout.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/stocks/search?q=${q}&limit=8`);
+        const data = await res.json();
+        setSearchResults(data);
+        setShowDropdown(true);
+      } catch { setSearchResults([]); }
+    }, 300);
   };
 
   const selectStock = (stock) => {

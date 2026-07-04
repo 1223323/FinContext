@@ -25,7 +25,7 @@ from __future__ import annotations
 
 # Predictions with conviction below this are dropped from user-facing output.
 # They still get logged to the ledger for calibration analysis.
-MIN_CONVICTION_FOR_USER = 50
+MIN_CONVICTION_FOR_USER = 60
 
 # Per-signal weights for the ensemble vote. News is the catalyst (highest);
 # technicals confirm/contradict; sector + flow are macro context modifiers.
@@ -35,6 +35,12 @@ SIGNAL_WEIGHTS = {
     "sector": 15,
     "flow":   10,
 }
+
+# Penalty applied to conviction for each conflicting signal
+CONFLICT_PENALTY = 8
+
+# Cap on conviction if news is missing or neutral
+NO_NEWS_CAP = 65
 
 # Bands beyond which a sector return / flow / score is considered directional.
 SECTOR_DIRECTIONAL_PCT = 1.0     # |sector return| ≥ 1.0% → directional
@@ -178,12 +184,12 @@ def compute_ensemble(
         conviction = 50
 
     # Penalty for any conflict — even one opposing signal kills high conviction.
-    conviction -= conflicting * 8
+    conviction -= conflicting * CONFLICT_PENALTY
 
     # If news (the catalyst) is missing or neutral, cap conviction lower —
     # technicals alone shouldn't carry a high-conviction call.
     if breakdown["news"] in (None, "neutral"):
-        conviction = min(conviction, 65)
+        conviction = min(conviction, NO_NEWS_CAP)
 
     # Hard ceiling — markets are never 95+% predictable. Anyone claiming higher
     # is overfitting. Floor at 0 in case heavy conflict pushed below.

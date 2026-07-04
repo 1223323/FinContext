@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 LLM Engine Service
 ===================
@@ -11,22 +13,28 @@ Architecture:
 import logging
 
 from app.seed_data import STOCKS
-from app.services import ai_client
+from app.services import ai_client, market_data
 
 logger = logging.getLogger(__name__)
 
 
-def generate_analysis(ticker: str, context_docs: list[dict]) -> str:
+def generate_analysis(ticker: str, context_docs: list[dict], stock_info: dict = None) -> str:
     """
     Generate a synthesized analysis paragraph from retrieved context using Gemini.
     """
-    stock = STOCKS.get(ticker)
+    stock = stock_info or STOCKS.get(ticker)
     if not stock or not context_docs:
         return f"Insufficient data available for {ticker} analysis at this time."
 
     name = stock["name"]
     sector = stock["sector"]
-    change = stock["change_percent"]
+    
+    quote = market_data.get_live_quote(ticker)
+    if quote:
+        change = quote.get("change_percent", 0.0)
+    else:
+        change = stock["change_percent"]
+        
     direction = "gaining" if change > 0 else "declining" if change < 0 else "flat"
 
     if ai_client.is_available():

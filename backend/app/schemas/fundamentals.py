@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Company fundamentals shapes — backing services/fundamentals.py.
 
 These mirror the dict shapes the company_data router returns today; declaring

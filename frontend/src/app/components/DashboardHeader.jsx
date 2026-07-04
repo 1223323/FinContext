@@ -59,11 +59,15 @@ export default function DashboardHeader({ onSearch, onCheckTicker, user, onLogou
     const q = checkQuery.trim();
     if (q.length < 2) { setCheckResults([]); return; }
     let cancelled = false;
-    fetch(`${API_BASE}/api/stocks/search?q=${encodeURIComponent(q)}&limit=6`)
-      .then((r) => r.ok ? r.json() : [])
-      .then((rows) => { if (!cancelled) setCheckResults(rows || []); })
-      .catch(() => { if (!cancelled) setCheckResults([]); });
-    return () => { cancelled = true; };
+    
+    const timer = setTimeout(() => {
+      fetch(`${API_BASE}/api/stocks/search?q=${encodeURIComponent(q)}&limit=6`)
+        .then((r) => r.ok ? r.json() : [])
+        .then((rows) => { if (!cancelled) setCheckResults(rows || []); })
+        .catch(() => { if (!cancelled) setCheckResults([]); });
+    }, 300);
+    
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [checkQuery]);
 
   const launchCheck = (ticker) => {
@@ -88,10 +92,12 @@ export default function DashboardHeader({ onSearch, onCheckTicker, user, onLogou
   };
 
   const initial =
+    (user?.user_metadata?.name && user.user_metadata.name.trim()[0]) ||
+    (user?.user_metadata?.full_name && user.user_metadata.full_name.trim()[0]) ||
     (user?.name && user.name.trim()[0]) ||
     (user?.email && user.email[0]) ||
     "A";
-  const displayName = user?.name || user?.email || "";
+  const displayName = user?.user_metadata?.name || user?.user_metadata?.full_name || user?.name || user?.email || "";
 
   // Shared icon-button styling — hairline border, solid surface, no glow.
   const iconBtn = {

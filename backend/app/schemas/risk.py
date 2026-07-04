@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Risk-metric and benchmark shapes (populated in Phase 2 — defined now so
 services and routers built later can import canonical types from day one)."""
 

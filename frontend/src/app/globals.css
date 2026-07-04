@@ -768,3 +768,42 @@
     width: 95vw;
   }
 }
+
+/* =========================================================
+   Component Styles Extracted from <style jsx>
+   ========================================================= */
+
+/* FirstInsightCard */
+@keyframes wire-shimmer-slide { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes fic-bar-grow { from { width: 0; opacity: 0; } to { opacity: 1; } }
+
+/* CompanyView */
+@keyframes cv-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(1.4); }
+}
+
+/* OnboardingModal */
+@keyframes oc-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.45; transform: scale(1.4); }
+}
+.oc-pulse-dot { animation: oc-pulse 1.6s ease-in-out infinite; }
+
+/* PortfolioView responsive */
+@media (max-width: 640px) {
+  .analysis-score-row {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+  .thesis-bullbear {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+}
+@media (max-width: 560px) {
+  .standby-cols {
+    grid-template-columns: 1fr !important;
+    gap: 22px !important;
+  }
+}

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import os
+import secrets
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Header, HTTPException, Query
@@ -36,7 +37,7 @@ def _check_admin(token: str | None) -> None:
             status_code=503,
             detail="ADMIN_TOKEN not configured on the server.",
         )
-    if token != ADMIN_TOKEN:
+    if not secrets.compare_digest(token or "", ADMIN_TOKEN):
         raise HTTPException(status_code=401, detail="Invalid admin token.")
 
 

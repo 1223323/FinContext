@@ -34,10 +34,10 @@ export default function SignupPage() {
     if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
     setSubmitting(true);
     try {
-      await signup(email, password, name || null);
+      const returnedUser = await signup(email, password, name || null);
       // Supabase may require email confirmation depending on project settings.
       // If so, user won't be logged in immediately — show a message.
-      if (!user) {
+      if (!returnedUser) {
         setInfo("Check your email to confirm your account, then sign in.");
       } else {
         router.replace("/");

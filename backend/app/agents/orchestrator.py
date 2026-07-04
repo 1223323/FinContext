@@ -90,7 +90,7 @@ def _coerce_output(output) -> dict:
             return _json.loads(raw)
         except _json.JSONDecodeError:
             logger.warning("crew output was non-JSON string; returning empty dict")
-            return {}
+            return {"raw_text": raw}
 
     if isinstance(output, dict):
         return output

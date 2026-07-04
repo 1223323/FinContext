@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Portfolio P&L enrichment endpoint.
 Accepts positions array from the frontend (stored in Supabase),
@@ -9,7 +11,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import APIRouter
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from cachetools import TTLCache
 import yfinance as yf
 from app.nse_universe import TICKER_TO_YF, TICKER_TO_META, resolve_yf_symbol
@@ -33,7 +35,7 @@ class PositionIn(BaseModel):
 
 
 class EnrichRequest(BaseModel):
-    positions: list[PositionIn]
+    positions: list[PositionIn] = Field(..., max_length=200)
 
 
 def _fetch_price_inner(yf_symbol: str) -> tuple[float | None, float | None] | None:

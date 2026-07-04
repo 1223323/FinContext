@@ -46,6 +46,13 @@ export default function PortfolioView({ onNavigate }) {
   const [intel, setIntel] = useState(null);
   const [intelLoading, setIntelLoading] = useState(false);
   const [intelSteps, setIntelSteps] = useState([]);
+  const intelAbortRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (intelAbortRef.current) intelAbortRef.current.abort();
+    };
+  }, []);
 
   const fetchPortfolio = useCallback(async () => {
     if (!user?.id) return;
@@ -81,6 +88,8 @@ export default function PortfolioView({ onNavigate }) {
         // Backend unreachable — render raw holdings without enrichment.
         setPortfolio(fallback());
       }
+    } catch (err) {
+      console.error("Failed to fetch portfolio:", err);
     } finally {
       setLoading(false);
     }
@@ -114,11 +123,14 @@ export default function PortfolioView({ onNavigate }) {
         // Replace the current user's holdings with the CSV snapshot (Kite is source of truth).
         // Scope delete to user_id — never run a global delete.
         await supabase.from("portfolio").delete().eq("user_id", user.id);
-        for (const pos of data.positions) {
-          await supabase.from("portfolio").upsert(
-            { ticker: pos.ticker, quantity: pos.quantity, buy_price: pos.buy_price, user_id: user.id },
-            { onConflict: "ticker,user_id" }
-          );
+        const rowsToInsert = data.positions.map(pos => ({
+          ticker: pos.ticker,
+          quantity: pos.quantity,
+          buy_price: pos.buy_price,
+          user_id: user.id
+        }));
+        if (rowsToInsert.length > 0) {
+          await supabase.from("portfolio").upsert(rowsToInsert, { onConflict: "ticker,user_id" });
         }
         // Warm the backend intelligence cache while the user reads the toast.
         try {
@@ -138,6 +150,10 @@ export default function PortfolioView({ onNavigate }) {
 
   const runIntelligence = async () => {
     if (!portfolio?.positions?.length) return;
+    
+    if (intelAbortRef.current) intelAbortRef.current.abort();
+    intelAbortRef.current = new AbortController();
+    
     setIntelLoading(true);
     setIntel(null);
     setIntelSteps([]);
@@ -146,6 +162,7 @@ export default function PortfolioView({ onNavigate }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ positions: portfolio.positions.map((p) => ({ ticker: p.ticker, quantity: p.quantity, buy_price: p.buy_price })) }),
+        signal: intelAbortRef.current.signal,
       });
       // readSSE handles Render's edge fragmenting the result payload across
       // multiple TCP chunks — the old chunk.split("\n") parser silently
@@ -155,7 +172,9 @@ export default function PortfolioView({ onNavigate }) {
         if (data.type === "step") setIntelSteps((prev) => [...prev, data.message]);
         else if (data.type === "result") { setIntel(data); setIntelLoading(false); }
       }
-    } catch { setIntelLoading(false); }
+    } catch (err) {
+      if (err.name !== 'AbortError') setIntelLoading(false);
+    }
   };
 
   const verdictMap = {};
@@ -751,14 +770,6 @@ function AnalysisResultPanel({ intel, onReanalyze }) {
       )}
 
       {/* Stack the score block + bars on narrow viewports. */}
-      <style jsx>{`
-        @media (max-width: 640px) {
-          .analysis-score-row {
-            grid-template-columns: 1fr !important;
-            gap: 20px !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }
@@ -1051,14 +1062,6 @@ function HoldingThesisCard({ thesis }) {
         </div>
       )}
 
-      <style jsx>{`
-        @media (max-width: 640px) {
-          .thesis-bullbear {
-            grid-template-columns: 1fr !important;
-            gap: 16px !important;
-          }
-        }
-      `}</style>
     </article>
   );
 }
@@ -1409,14 +1412,6 @@ function AnalysisStandbyCard({ portfolio, onRun }) {
       </div>
 
       {/* Stack the two columns on narrow viewports so labels don't truncate. */}
-      <style jsx>{`
-        @media (max-width: 560px) {
-          .standby-cols {
-            grid-template-columns: 1fr !important;
-            gap: 22px !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

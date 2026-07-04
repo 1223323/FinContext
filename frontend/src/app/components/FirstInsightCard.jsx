@@ -343,10 +343,6 @@ function Bar({ w = "70%", delay = "0s" }) {
           animation: `wire-shimmer-slide 2s linear infinite, fic-bar-grow 0.9s cubic-bezier(0.16,1,0.3,1) ${delay} both`,
         }}
       />
-      <style jsx>{`
-        @keyframes wire-shimmer-slide { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-        @keyframes fic-bar-grow { from { width: 0; opacity: 0; } to { opacity: 1; } }
-      `}</style>
     </div>
   );
 }

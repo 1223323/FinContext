@@ -48,6 +48,9 @@ export function useCache(key, fetchFn, opts = {}) {
   const fetchRef = useRef(fetchFn);
   fetchRef.current = fetchFn;
 
+  const fullKeyRef = useRef(fullKey);
+  fullKeyRef.current = fullKey;
+
   const refresh = useCallback(
     async (silent = false, ...args) => {
       if (!silent) setLoading(true);
@@ -56,12 +59,16 @@ export function useCache(key, fetchFn, opts = {}) {
         // Forward any extra args to fetchFn — lets callers pass a `force`
         // flag to bypass server-side SWR (e.g. user-clicked refresh).
         const fresh = await fetchRef.current(...args);
+        
+        // Prevent stale closure race conditions if the key changes mid-fetch
+        if (fullKeyRef.current !== fullKey) return fresh;
+
         setData(fresh);
         setStale(false);
         setRefreshedAt(Date.now());
         try {
           localStorage.setItem(
-            fullKey,
+            fullKeyRef.current,
             JSON.stringify({ data: fresh, ts: Date.now() })
           );
         } catch {
@@ -69,10 +76,13 @@ export function useCache(key, fetchFn, opts = {}) {
         }
         return fresh;
       } catch (e) {
+        if (fullKeyRef.current !== fullKey) throw e;
         setError(e?.message || String(e));
         throw e;
       } finally {
-        setLoading(false);
+        if (fullKeyRef.current === fullKey) {
+          setLoading(false);
+        }
       }
     },
     [fullKey]

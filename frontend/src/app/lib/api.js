@@ -78,3 +78,5 @@ export async function apiJson(path, { method = "GET", body, headers } = {}) {
   }
   return data;
 }
+
+installFetchCredentials();
