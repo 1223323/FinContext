@@ -39,7 +39,9 @@ class Settings:
     FRONTEND_URL: str = os.environ.get("FRONTEND_URL", "http://localhost:3000")
     # Comma-separated list of exact allowed origins.
     # Note: with allow_credentials=True the browser rejects "*", so origins must be enumerated.
-    CORS_ORIGINS: list[str] = [
+    # FRONTEND_URL is always auto-included so the production frontend is never
+    # accidentally locked out when CORS_ORIGINS is overridden via env var.
+    _cors_raw: list[str] = [
         o.strip()
         for o in os.environ.get(
             "CORS_ORIGINS",
@@ -47,6 +49,7 @@ class Settings:
         ).split(",")
         if o.strip()
     ]
+    CORS_ORIGINS: list[str] = list(dict.fromkeys(_cors_raw + [FRONTEND_URL]))
     # Optional regex for matching ephemeral preview URLs (e.g. Vercel/Netlify previews).
     # Example value: r"https://.*\.vercel\.app"
     CORS_ORIGIN_REGEX: str | None = os.environ.get("CORS_ORIGIN_REGEX") or None
