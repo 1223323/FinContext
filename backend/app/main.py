@@ -68,9 +68,13 @@ app.add_middleware(
 async def debug_cors():
     """Returns the loaded CORS config so you can verify env-var values from Render
     without redeploying. Safe to keep enabled — exposes only allowed origins, no secrets."""
+    import os
     return {
         "allow_origins": settings.CORS_ORIGINS,
         "allow_origin_regex": settings.CORS_ORIGIN_REGEX,
+        "raw_cors_origins_env": os.environ.get("CORS_ORIGINS"),
+        "raw_frontend_url_env": os.environ.get("FRONTEND_URL"),
+        "env_file_loaded": os.path.exists(".env")
     }
 
 app.include_router(stocks.router)
