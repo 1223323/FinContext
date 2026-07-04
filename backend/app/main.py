@@ -13,6 +13,7 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from app.db import init_db
 from app.routers import (
     stocks,
@@ -92,3 +93,10 @@ app.include_router(auth_router.router)
 @app.get("/health", tags=["system"])
 async def health_check():
     return {"status": "healthy", "version": "0.5.0"}
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    import os
+    favicon_path = os.path.join(os.path.dirname(__file__), "favicon.png")
+    return FileResponse(favicon_path)
