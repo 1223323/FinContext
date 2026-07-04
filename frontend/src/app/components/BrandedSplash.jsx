@@ -15,24 +15,18 @@ export default function BrandedSplash({ message = "Loading your dashboard…" })
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-        <div
+        <img
+          src="/logo.png"
+          alt="FinContext Logo"
           style={{
             width: "44px",
             height: "44px",
             borderRadius: "12px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "white",
-            fontWeight: 700,
-            fontSize: "20px",
-            background:
-              "linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-cyan))",
+            flexShrink: 0,
+            objectFit: "contain",
             boxShadow: "0 0 30px rgba(99, 102, 241, 0.35)",
           }}
-        >
-          F
-        </div>
+        />
         <div>
           <div
             className="gradient-text"

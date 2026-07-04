@@ -228,25 +228,17 @@ export default function Sidebar({ activeNav, onNavChange }) {
           borderBottom: "1px solid var(--border-subtle)",
         }}
       >
-        <div
+        <img
+          src="/logo.png"
+          alt="FinContext Logo"
           style={{
             width: "30px",
             height: "30px",
             borderRadius: "7px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--color-text-primary)",
-            fontWeight: 700,
-            fontSize: "15px",
             flexShrink: 0,
-            background: "var(--color-bg-card-hover)",
-            border: "1px solid var(--border-strong)",
-            letterSpacing: "-0.03em",
+            objectFit: "contain",
           }}
-        >
-          F
-        </div>
+        />
         {!isTablet && (
           <div style={{ lineHeight: 1.25 }}>
             <h1
