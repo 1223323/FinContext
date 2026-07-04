@@ -14,9 +14,16 @@
 // which is what was causing reloads to log users out in dev).
 export const API_BASE = (() => {
   if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
+    const url = process.env.NEXT_PUBLIC_API_URL.trim();
+    // Ignore placeholder strings like "NEXT_PUBLIC_API_URL"
+    if (url && !url.includes("NEXT_PUBLIC_API_URL") && (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("/"))) {
+      return url;
+    }
   }
   if (typeof window !== "undefined" && window.location?.hostname) {
+    if (window.location.hostname === "financial.jashchauhan.tech") {
+      return "https://fincontext.onrender.com";
+    }
     return `${window.location.protocol}//${window.location.hostname}:8000`;
   }
   return "http://localhost:8000";
