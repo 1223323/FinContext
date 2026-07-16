@@ -1247,7 +1247,7 @@ def build_morning_brief_context(
         meta = TICKER_TO_META.get(t, {"name": t, "sector": "Unknown"})
         news_items: list[dict] = []
         try:
-            raw = data_ingestion.retrieve_context(t, top_k=2)
+            raw = data_ingestion.retrieve_context(t, top_k=5)
             for i, n in enumerate(raw):
                 news_items.append({
                     "id": f"{t}_news[{i}]",
@@ -1273,7 +1273,7 @@ def build_morning_brief_context(
         meta = TICKER_TO_META.get(t, {"name": t, "sector": "Unknown"})
         news_items: list[dict] = []
         try:
-            raw = data_ingestion.retrieve_context(t, top_k=1)
+            raw = data_ingestion.retrieve_context(t, top_k=3)
             for i, n in enumerate(raw):
                 news_items.append({
                     "id": f"{t}_news[{i}]",

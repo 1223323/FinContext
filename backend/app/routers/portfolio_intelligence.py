@@ -1467,7 +1467,7 @@ def _collect_candidate_news(context: dict) -> list[dict]:
             })
 
     # India macro headlines — broader signal, smaller share.
-    for n in context.get("india_headlines", [])[:8]:
+    for n in context.get("india_headlines", [])[:20]:
         candidates.append({
             "id": n.get("id"),
             "headline": n.get("headline"),
@@ -1477,7 +1477,7 @@ def _collect_candidate_news(context: dict) -> list[dict]:
         })
 
     # Global headlines (overnight) — most relevant for IT/Pharma/Auto exposure.
-    for n in context.get("global_headlines", [])[:10]:
+    for n in context.get("global_headlines", [])[:20]:
         candidates.append({
             "id": n.get("id"),
             "headline": n.get("headline"),
@@ -1490,9 +1490,9 @@ def _collect_candidate_news(context: dict) -> list[dict]:
     # Policy / regulatory items — PIB government press releases + RBI. The
     # annotator maps these to user holdings via affected_sectors when no
     # specific ticker is named (e.g. "PLI expansion to specialty steel" hits
-    # JSWSTEEL/TATASTEEL/JINDALSTEL). Cap at 12 — they're high-signal-density
+    # JSWSTEEL/TATASTEEL/JINDALSTEL). Cap at 24 — they're high-signal-density
     # so the LLM rarely needs more than the most-recent ones.
-    for n in context.get("policy_headlines", [])[:12]:
+    for n in context.get("policy_headlines", [])[:24]:
         candidates.append({
             "id": n.get("id"),
             "headline": n.get("headline"),
@@ -1502,7 +1502,7 @@ def _collect_candidate_news(context: dict) -> list[dict]:
             "affected_sectors": n.get("affected_sectors") or [],
         })
 
-    return candidates[:100]  # bumped from 90 to absorb the policy stream
+    return candidates[:200]  # bumped from 100 to absorb the policy stream
 
 
 def _merge_semantic_into_candidates(
@@ -1691,8 +1691,7 @@ async def news_feed(req: NewsFeedRequest, background: BackgroundTasks):
         "extending_up; above SMA50.'\n"
         "6. category: 'stock_specific' (single ticker news), 'sector' (sector-wide), 'macro' "
         "(India macro), 'global' (overseas event with India impact).\n"
-        "7. Order output by impact_level (high → medium → low). Cap at 20 items — "
-        "the top 20 most relevant beat a long tail every time.\n"
+        "7. Order output by impact_level (high → medium → low). Cap at 45 items.\n"
         "8. For users with 20+ holdings, lean toward keeping items even at 'low' impact — "
         "the user wants breadth of coverage across their portfolio, not just headline events.\n"
         "9. Some candidates carry `semantic_match_ticker` + `semantic_similarity` (0-1). "
@@ -1764,7 +1763,7 @@ async def news_feed(req: NewsFeedRequest, background: BackgroundTasks):
 
     universe = set(user_holdings) | set(user_watchlist)
     cleaned: list[dict] = []
-    for it in (data.get("items") or [])[:20]:
+    for it in (data.get("items") or [])[:45]:
         affected = [t for t in (it.get("affected_tickers") or []) if t in universe]
         if not affected:
             continue  # if no real impact on user, drop it

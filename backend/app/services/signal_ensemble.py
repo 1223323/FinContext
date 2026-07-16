@@ -25,7 +25,7 @@ from __future__ import annotations
 
 # Predictions with conviction below this are dropped from user-facing output.
 # They still get logged to the ledger for calibration analysis.
-MIN_CONVICTION_FOR_USER = 60
+MIN_CONVICTION_FOR_USER = 40
 
 # Per-signal weights for the ensemble vote. News is the catalyst (highest);
 # technicals confirm/contradict; sector + flow are macro context modifiers.
