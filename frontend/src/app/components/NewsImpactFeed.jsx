@@ -552,54 +552,56 @@ export default function NewsImpactFeed({ onNavigate }) {
             )}
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {visibleItems.map((item, i) => (
-              <Reveal key={item.news_id || i} index={i} step={32}>
-                <NewsRow
-                  item={item}
-                  onTickerClick={handleTickerClick}
-                  onOpen={() => setActiveItem(item)}
-                  holdingsToday={feed?.holdings_today}
-                />
-              </Reveal>
-            ))}
-          </div>
-          {/* Show more button — progressive reveal */}
-          {visibleCount < items.length && (
-            <div style={{ display: "flex", justifyContent: "center", marginTop: "12px" }}>
-              <button
-                type="button"
-                onClick={() => setVisibleCount((v) => v + 10)}
-                style={{
-                  padding: "8px 20px",
-                  borderRadius: "8px",
-                  border: "1px solid rgba(99,102,241,0.2)",
-                  background: "rgba(99,102,241,0.08)",
-                  color: "var(--color-accent-secondary)",
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "rgba(99,102,241,0.15)";
-                  e.currentTarget.style.borderColor = "rgba(99,102,241,0.4)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "rgba(99,102,241,0.08)";
-                  e.currentTarget.style.borderColor = "rgba(99,102,241,0.2)";
-                }}
-              >
-                <span>Show {Math.min(10, items.length - visibleCount)} more</span>
-                <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>
-                  ({visibleCount}/{items.length})
-                </span>
-              </button>
+          <>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {visibleItems.map((item, i) => (
+                <Reveal key={item.news_id || i} index={i} step={32}>
+                  <NewsRow
+                    item={item}
+                    onTickerClick={handleTickerClick}
+                    onOpen={() => setActiveItem(item)}
+                    holdingsToday={feed?.holdings_today}
+                  />
+                </Reveal>
+              ))}
             </div>
-          )}
+            {/* Show more button — progressive reveal */}
+            {visibleCount < items.length && (
+              <div style={{ display: "flex", justifyContent: "center", marginTop: "12px" }}>
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((v) => v + 10)}
+                  style={{
+                    padding: "8px 20px",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(99,102,241,0.2)",
+                    background: "rgba(99,102,241,0.08)",
+                    color: "var(--color-accent-secondary)",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(99,102,241,0.15)";
+                    e.currentTarget.style.borderColor = "rgba(99,102,241,0.4)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "rgba(99,102,241,0.08)";
+                    e.currentTarget.style.borderColor = "rgba(99,102,241,0.2)";
+                  }}
+                >
+                  <span>Show {Math.min(10, items.length - visibleCount)} more</span>
+                  <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>
+                    ({visibleCount}/{items.length})
+                  </span>
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
