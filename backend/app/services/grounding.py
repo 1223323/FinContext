@@ -152,6 +152,22 @@ SECTOR_INDEX_MAP: dict[str, str] = {
     "Consumer Durables": "^CNXFMCG",
 }
 
+# Map Yahoo Finance sector strings to our internal sector names.
+# Used when a ticker is outside the curated NSE_STOCKS universe.
+YAHOO_SECTOR_MAP: dict[str, str] = {
+    "Financial Services": "Banking",
+    "Technology": "IT",
+    "Consumer Cyclical": "Consumer Durables",
+    "Consumer Defensive": "FMCG",
+    "Healthcare": "Pharmaceuticals",
+    "Basic Materials": "Metals & Mining",
+    "Energy": "Oil & Gas",
+    "Industrials": "Capital Goods",
+    "Utilities": "Power",
+    "Communication Services": "Telecom",
+    "Real Estate": "Real Estate",
+}
+
 # Global-news locales that drive overnight IN market direction.
 _GLOBAL_SOURCES = [
     {"code": "US", "label": "United States", "query": "US economy stock market Federal Reserve Wall Street when:1d"},
@@ -264,6 +280,10 @@ def _fetch_snapshot(ticker: str) -> dict:
             "52w_high": _safe(info.get("fiftyTwoWeekHigh")),
             "52w_low": _safe(info.get("fiftyTwoWeekLow")),
             "business_summary": (info.get("longBusinessSummary") or "")[:400],
+            # Internal-only: stash Yahoo's sector/industry so build_stock_context
+            # can resolve peers for non-curated tickers without a second yfinance call.
+            "_yf_sector": info.get("sector") or "",
+            "_yf_industry": info.get("industry") or "",
         }
 
     # 8s budget — heavier path (t.info hits Yahoo quote_summary which is slow
@@ -300,7 +320,7 @@ def _peer_stats(sector: str, exclude_ticker: str) -> dict:
     if key in _peer_cache:
         stats = dict(_peer_cache[key])
     else:
-        peer_meta = [s for s in NSE_STOCKS if s["sector"] == sector][:10]
+        peer_meta = [s for s in NSE_STOCKS if s["sector"] == sector][:15]
         collected: dict[str, list[float]] = {
             "pe_ratio": [], "pb_ratio": [], "roe_pct": [],
             "profit_margin_pct": [], "debt_to_equity": [], "revenue_growth_pct": [],
@@ -400,7 +420,7 @@ def get_sector_alternatives(context: dict, limit: int = 2) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Public: single-stock context
 # ---------------------------------------------------------------------------
-def build_stock_context(ticker: str, include_news: bool = True, news_k: int = 5) -> dict:
+def build_stock_context(ticker: str, include_news: bool = True, news_k: int = 12) -> dict:
     """
     Returns a structured dict that the LLM must ground its output in.
 
@@ -419,6 +439,25 @@ def build_stock_context(ticker: str, include_news: bool = True, news_k: int = 5)
 
     meta = TICKER_TO_META.get(ticker, {"name": ticker, "sector": "Unknown"})
     snap = _fetch_snapshot(ticker)
+
+    # Dynamic sector resolution for non-curated tickers: if sector is "Unknown"
+    # but we got a yfinance snapshot, map Yahoo's sector string to our internal
+    # sector names so peer comparisons work.
+    if meta.get("sector") == "Unknown" and snap:
+        yf_sector = snap.get("_yf_sector", "")
+        mapped_sector = YAHOO_SECTOR_MAP.get(yf_sector, "")
+        if not mapped_sector and yf_sector:
+            # Fallback: use the raw Yahoo sector directly — may not match our
+            # SECTOR_INDEX_MAP but will at least attempt peer matching.
+            mapped_sector = yf_sector
+        if mapped_sector:
+            meta = {**meta, "sector": mapped_sector}
+            # Also resolve the company name if it's just the ticker symbol.
+            if meta.get("name") == ticker:
+                biz = snap.get("business_summary", "")
+                # Rough name extraction from business summary isn't reliable.
+                # Leave name as ticker — the UI handles it.
+                pass
 
     # --- peer benchmark + percentile rank on this stock ------------------
     peer = _peer_stats(meta.get("sector", "Unknown"), ticker)
@@ -445,6 +484,18 @@ def build_stock_context(ticker: str, include_news: bool = True, news_k: int = 5)
         except Exception as e:
             logger.warning("news fetch failed for %s: %s", ticker, e)
 
+    # --- financial statements (enrichment for deeper analysis) -----------
+    financial_statements: dict = {}
+    try:
+        from app.services import fundamentals
+        fin = fundamentals.get_financials(ticker)
+        financial_statements = {
+            "income_statement": fin.get("income_statement", {}),
+            "balance_sheet": fin.get("balance_sheet", {}),
+        }
+    except Exception as e:
+        logger.debug("financial statements fetch failed for %s: %s", ticker, e)
+
     from datetime import datetime
     ctx = {
         "meta": {"ticker": ticker, "name": meta.get("name"), "sector": meta.get("sector")},
@@ -457,6 +508,7 @@ def build_stock_context(ticker: str, include_news: bool = True, news_k: int = 5)
         },
         "signals": signals,
         "news": news,
+        "financial_statements": financial_statements,
         "generated_at": datetime.utcnow().isoformat() + "Z",
     }
     _context_cache[cache_key] = ctx
@@ -729,15 +781,15 @@ def build_market_context() -> dict:
     # — UI felt stuck on yesterday's news. The pool gives genuine variety; we
     # take 6 from the pool and 3 from Google as supplement, dedup, and freshness-
     # sort. Per-source failures are isolated inside news_sources.
-    india_pool = news_sources.fetch_india_market_pool(n=12)
+    india_pool = news_sources.fetch_india_market_pool(n=24)
     india_query = "India economy stock market finance when:1d"
     india_google = news_sources.google_news_for_query(
-        india_query, hl="en-IN", gl="IN", ceid="IN:en", n=6
+        india_query, hl="en-IN", gl="IN", ceid="IN:en", n=12
     )
     india_merged = news_sources.dedup_items(india_pool + india_google)
-    # Keep the top 10 — more variety than the old 6 since we have real source diversity now.
+    # Keep the top 20 — more variety since we have real source diversity now.
     india_news = [
-        {"id": f"india_news[{i}]", **n} for i, n in enumerate(india_merged[:10])
+        {"id": f"india_news[{i}]", **n} for i, n in enumerate(india_merged[:20])
     ]
 
     # Policy + regulatory pulse (PIB government press releases + RBI). This is
@@ -757,7 +809,7 @@ def build_market_context() -> dict:
     idx = 0
     for src in _GLOBAL_SOURCES:
         items = _fetch_rss_headlines(
-            src["query"], hl="en-US", gl="US", ceid="US:en", n=3
+            src["query"], hl="en-US", gl="US", ceid="US:en", n=5
         )
         for n in items:
             global_news.append({

@@ -134,7 +134,7 @@ def _strip_html(s: str | None) -> str:
     return re.sub(r"<[^>]+>", "", s).strip()
 
 
-def fetch_feed(url: str, source: str, category: str, limit: int = 12) -> list[dict]:
+def fetch_feed(url: str, source: str, category: str, limit: int = 20) -> list[dict]:
     """Fetch a single RSS feed. Returns up to `limit` items. Cached + neg-cached."""
     if url in _feed_cache:
         return _feed_cache[url][:limit]
@@ -210,7 +210,7 @@ def dedup_items(items: list[dict]) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
-def fetch_india_market_pool(n: int = 18) -> list[dict]:
+def fetch_india_market_pool(n: int = 40) -> list[dict]:
     """Fan-out fetch across all Indian market RSS feeds. Returns up to `n`
     deduplicated, freshness-sorted items.
 
@@ -224,7 +224,7 @@ def fetch_india_market_pool(n: int = 18) -> list[dict]:
     # start (each individually capped at 5 s), but bounded so the Context
     # Engine SSE can't stall behind a runaway thread pool.
     budget_s = 8.0
-    futures = [_exec.submit(fetch_feed, url, src, cat, 12) for url, src, cat in INDIAN_MARKET_FEEDS]
+    futures = [_exec.submit(fetch_feed, url, src, cat, 20) for url, src, cat in INDIAN_MARKET_FEEDS]
 
     items: list[dict] = []
     # Track which futures we've already harvested so the timeout-recovery path
@@ -260,7 +260,7 @@ def fetch_india_market_pool(n: int = 18) -> list[dict]:
 
 
 def google_news_for_query(query: str, hl: str = "en-IN", gl: str = "IN",
-                          ceid: str = "IN:en", n: int = 8) -> list[dict]:
+                          ceid: str = "IN:en", n: int = 15) -> list[dict]:
     """Google News RSS for a specific query (kept as backstop / per-ticker)."""
     cache_key = f"gnews|{query}|{hl}|{gl}|{ceid}"
     if cache_key in _feed_cache:
@@ -272,7 +272,7 @@ def google_news_for_query(query: str, hl: str = "en-IN", gl: str = "IN",
         r.raise_for_status()
         feed = feedparser.parse(r.content)
         out = []
-        for entry in feed.entries[:n + 4]:
+        for entry in feed.entries[:n + 10]:
             headline = (entry.title or "").strip()
             if not headline:
                 continue
@@ -296,7 +296,7 @@ def google_news_for_query(query: str, hl: str = "en-IN", gl: str = "IN",
 
 
 def fetch_for_ticker(ticker: str, company_name: str, sector: str | None,
-                     n: int = 6) -> list[dict]:
+                     n: int = 15) -> list[dict]:
     """Per-ticker news. Strategy:
         1. Google News for the company name (specific, ticker-focused).
         2. Filter the general Indian-market pool for items mentioning the
@@ -313,7 +313,7 @@ def fetch_for_ticker(ticker: str, company_name: str, sector: str | None,
     )
 
     # 2. General pool — filter by ticker / company-name mention
-    pool = fetch_india_market_pool(n=24)
+    pool = fetch_india_market_pool(n=48)
     company_l = (company_q or "").lower()
     ticker_l = ticker.lower()
     # Use the first significant word of the company name to catch "TCS",

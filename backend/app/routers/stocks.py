@@ -177,15 +177,25 @@ async def get_sectors():
 # Existing Endpoints (updated for full NSE universe)
 # -----------------------------------------------------------------------
 @router.get("/{ticker}/price", response_model=PriceHistoryResponse)
-async def get_stock_price_history(ticker: str):
+async def get_stock_price_history(
+    ticker: str,
+    period: str = Query("1mo", description="Time period: 1w, 1mo, 3mo, 1y"),
+):
     """Get historical price data for any NSE ticker."""
     ticker = ticker.upper()
 
-    if ticker not in TICKER_TO_YF:
+    # Validate the ticker can be resolved — no longer restricted to the curated
+    # TICKER_TO_YF list. resolve_yf_symbol falls back to {TICKER}.NS for any
+    # NSE ticker not in our ~143 curated universe.
+    if not resolve_yf_symbol(ticker):
         raise HTTPException(status_code=404, detail=f"Ticker '{ticker}' not found.")
 
+    # Map frontend timeframe labels to yfinance period strings.
+    PERIOD_MAP = {"1w": "5d", "1mo": "1mo", "3mo": "3mo", "1y": "1y"}
+    yf_period = PERIOD_MAP.get(period.lower(), "1mo")
+
     meta = TICKER_TO_META.get(ticker, {"name": ticker, "sector": "Unknown"})
-    live_data = _get_history(ticker, period="1mo")
+    live_data = _get_history(ticker, period=yf_period)
 
     if live_data:
         return PriceHistoryResponse(

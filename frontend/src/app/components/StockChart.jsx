@@ -50,18 +50,22 @@ export default function StockChart({ ticker, stockName }) {
   const [loading, setLoading] = useState(false);
   const [timeframe, setTimeframe] = useState("1M");
 
+  // Map UI timeframe labels to API period query values.
+  const PERIOD_MAP = { "1W": "1w", "1M": "1mo", "3M": "3mo", "1Y": "1y" };
+
   useEffect(() => {
     if (!ticker) return;
     setLoading(true);
 
-    fetch(`${API_BASE}/api/stocks/${ticker}/price`)
+    const period = PERIOD_MAP[timeframe] || "1mo";
+    fetch(`${API_BASE}/api/stocks/${ticker}/price?period=${period}`)
       .then((res) => res.json())
       .then((data) => {
         setPriceData(data.data || []);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [ticker]);
+  }, [ticker, timeframe]);
 
   if (!ticker) {
     return (

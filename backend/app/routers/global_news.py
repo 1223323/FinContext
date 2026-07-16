@@ -12,7 +12,7 @@ import feedparser
 import logging
 from urllib.parse import quote
 from cachetools import TTLCache
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional
 
@@ -77,19 +77,19 @@ COUNTRY_CONFIG = {
 }
 
 # News cache: 15-min TTL, max 20 entries
-_news_cache = TTLCache(maxsize=20, ttl=300)
+_news_cache = TTLCache(maxsize=100, ttl=300)
 
 
 # -----------------------------------------------------------------------
 # Helpers
 # -----------------------------------------------------------------------
-def _fetch_news(country_code: str, num_results: int = 8) -> list[dict]:
+def _fetch_news(country_code: str, num_results: int = 15) -> list[dict]:
     """Fetch financial news for a country from Google News RSS."""
     cfg = COUNTRY_CONFIG.get(country_code)
     if not cfg:
         return []
 
-    cache_key = f"globe_{country_code}"
+    cache_key = f"globe_{country_code}_{num_results}"
     if cache_key in _news_cache:
         return _news_cache[cache_key]
 
@@ -155,14 +155,17 @@ async def list_countries():
 
 
 @router.get("/{country_code}")
-async def get_country_news(country_code: str):
+async def get_country_news(
+    country_code: str,
+    limit: int = Query(15, ge=1, le=50, description="Max headlines to return"),
+):
     """Fetch financial news for a specific country/region."""
     country_code = country_code.upper()
     if country_code not in COUNTRY_CONFIG:
         raise HTTPException(status_code=404, detail=f"Unsupported country code: {country_code}")
 
     cfg = COUNTRY_CONFIG[country_code]
-    news = _fetch_news(country_code)
+    news = _fetch_news(country_code, num_results=limit)
 
     return {
         "country_code": country_code,

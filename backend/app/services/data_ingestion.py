@@ -96,7 +96,7 @@ def _fetch_google_news(query: str, num_results: int = 8) -> list[dict]:
         return []
 
 
-def retrieve_context(ticker: str, query: str | None = None, top_k: int = 5) -> list[dict]:
+def retrieve_context(ticker: str, query: str | None = None, top_k: int = 10) -> list[dict]:
     """
     Retrieve relevant context documents for a given ticker.
 
@@ -134,7 +134,7 @@ def retrieve_context(ticker: str, query: str | None = None, top_k: int = 5) -> l
 
     # 1. Multi-source ticker pull
     news: list[dict] = news_sources.fetch_for_ticker(
-        ticker, stock_name, sector, n=top_k + 3
+        ticker, stock_name, sector, n=top_k + 5
     )
 
     # 2. Optional supplement when caller provides a custom query

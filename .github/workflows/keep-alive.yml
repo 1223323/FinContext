@@ -3,7 +3,7 @@ name: Keep Render Service Awake
 on:
   schedule:
     # Runs every 10 minutes to prevent Render free-tier spin-down (15-min limit)
-    - cron: '*/10 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch: # Allows manual trigger from the Actions tab
 
 jobs:

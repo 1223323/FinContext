@@ -21,7 +21,7 @@ from app.nse_universe import TICKER_TO_META
 from app.agents import base as agents_base
 from app.agents.crews import narrative as narrative_crew
 from app.core.compliance import with_disclaimer
-from app.services import ai_client, grounding, technicals
+from app.services import ai_client, grounding, technicals, fundamentals
 
 logger = logging.getLogger(__name__)
 
@@ -286,7 +286,46 @@ async def deep_dive_generator(ticker: str):
         return
 
     try:
-        context = await asyncio.to_thread(grounding.build_stock_context, ticker)
+        context = await asyncio.to_thread(grounding.build_stock_context, ticker, True, 12)
+        # Fetch detailed ratios, financials, technicals before calling the LLM to ground it with complete data
+        from app.services import fundamentals, technicals
+        try:
+            ratios = await asyncio.to_thread(fundamentals.get_ratios, ticker)
+            context["detailed_ratios"] = ratios
+        except Exception:
+            ratios = None
+
+        try:
+            financial_stmts = await asyncio.to_thread(fundamentals.get_financials, ticker)
+            context["financial_statements"] = financial_stmts
+        except Exception:
+            pass
+
+        try:
+            tech = await asyncio.to_thread(technicals.compute_signals, ticker)
+            if tech:
+                context["technicals"] = tech
+        except Exception:
+            tech = None
+
+        # Backfill null snapshot metrics from detailed ratios
+        snap = context.get("snapshot") or {}
+        if ratios:
+            r_prof = ratios.get("profitability") or {}
+            r_growth = ratios.get("growth") or {}
+            r_health = ratios.get("financial_health") or {}
+            if snap.get("roe_pct") is None and r_prof.get("roe") is not None:
+                snap["roe_pct"] = r_prof["roe"]
+            if snap.get("profit_margin_pct") is None and r_prof.get("profit_margin") is not None:
+                snap["profit_margin_pct"] = r_prof["profit_margin"]
+            if snap.get("revenue_growth_pct") is None and r_growth.get("revenue_growth") is not None:
+                snap["revenue_growth_pct"] = r_growth["revenue_growth"]
+            if snap.get("debt_to_equity") is None and r_health.get("debt_to_equity") is not None:
+                snap["debt_to_equity"] = r_health["debt_to_equity"]
+            if snap.get("pe_ratio") is None:
+                val_ratios = ratios.get("valuation") or {}
+                if val_ratios.get("pe_ratio") is not None:
+                    snap["pe_ratio"] = val_ratios["pe_ratio"]
     except Exception as e:
         yield f"data: {json.dumps({'type':'error','message':f'Context build failed: {e}'})}\n\n"
         yield "data: [DONE]\n\n"
@@ -314,6 +353,9 @@ async def deep_dive_generator(ticker: str):
         f"WRITING STYLE:\n"
         f"• Use specific numbers in every sentence. 'ROE 22% vs sector median 14%' "
         f"beats 'strong return on equity'.\n"
+        f"• If CONTEXT.snapshot has partial null fields, derive metrics from "
+        f"CONTEXT.financial_statements and CONTEXT.detailed_ratios where possible. "
+        f"Do NOT return null for a metric that can be computed from available data.\n"
         f"• Bull/bear cases must be FALSIFIABLE — a thesis someone can disagree with "
         f"based on data, not vibes.\n"
         f"• valuation_read.stance is one of EXPENSIVE/FAIR/CHEAP — judge from P/E and "
@@ -394,7 +436,24 @@ async def deep_dive_generator(ticker: str):
     data = verified.get("verified", data)
 
     # Deterministic UI compat: compute *_score fields + alternatives from context.
+    # Ratios/technicals are already enriched and backfilled in context prior to LLM execution.
     financials = data.get("financials") or {}
+    snap = context.get("snapshot") or {}
+    
+    # Backfill missing text values in financials from snapshot/ratios if they are missing in LLM response
+    if financials.get("revenue_growth") is None or financials.get("revenue_growth") == "—":
+        val = snap.get("revenue_growth_pct")
+        financials["revenue_growth"] = f"{val:.1f}%" if val is not None else "—"
+    if financials.get("profit_margin") is None or financials.get("profit_margin") == "—":
+        val = snap.get("profit_margin_pct")
+        financials["profit_margin"] = f"{val:.1f}%" if val is not None else "—"
+    if financials.get("roe") is None or financials.get("roe") == "—":
+        val = snap.get("roe_pct")
+        financials["roe"] = f"{val:.1f}%" if val is not None else "—"
+    if financials.get("debt_to_equity") is None or financials.get("debt_to_equity") == "—":
+        val = snap.get("debt_to_equity")
+        financials["debt_to_equity"] = f"{val:.2f}" if val is not None else "—"
+
     scores = grounding.compute_financial_scores(context)
     for k, v in scores.items():
         if financials.get(k) is None:

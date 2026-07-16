@@ -86,6 +86,7 @@ export default function GlobeNewsSection() {
   const [autoRotate, setAutoRotate] = useState(true);
   const [marketStatus, setMarketStatus] = useState({});
   const [newsCount, setNewsCount] = useState({});
+  const [newsLimit, setNewsLimit] = useState(15);
 
   // Refs
   const isDragging = useRef(false);
@@ -181,10 +182,11 @@ export default function GlobeNewsSection() {
   }, []);
 
   // Fetch news
-  const fetchNews = useCallback(async (code) => {
+  const fetchNews = useCallback(async (code, limit) => {
     setLoadingNews(true); setNews([]); setImpact(null);
     try {
-      const res = await fetch(`${API_BASE}/api/global-news/${code}`);
+      const fetchLimit = limit || newsLimit;
+      const res = await fetch(`${API_BASE}/api/global-news/${code}?limit=${fetchLimit}`);
       const data = await res.json();
       setNews(data.news || []);
       setNewsCount(prev => ({ ...prev, [code]: data.news?.length || 0 }));
@@ -193,7 +195,7 @@ export default function GlobeNewsSection() {
       // Backend unreachable — degrade silently. console.warn (not error) so Next dev overlay stays quiet.
       console.warn("News fetch failed:", e?.message || e);
     } finally { setLoadingNews(false); }
-  }, []);
+  }, [newsLimit]);
 
   const fetchImpact = async (code, headlines) => {
     setLoadingImpact(true);
@@ -210,7 +212,8 @@ export default function GlobeNewsSection() {
 
   const handleSelect = useCallback((code) => {
     setSelected(code); setAutoRotate(false);
-    fetchNews(code);
+    setNewsLimit(15); // Reset limit on new country selection
+    fetchNews(code, 15);
     const info = COUNTRY_INFO[code];
     if (info) setRotation([-info.coords[0], -info.coords[1], 0]);
   }, [fetchNews]);
@@ -612,6 +615,44 @@ export default function GlobeNewsSection() {
                     </div>
                   </a>
                 ))}
+              </div>
+            )}
+
+            {/* Load More Button */}
+            {news.length > 0 && news.length >= newsLimit && (
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: "18px" }}>
+                <button
+                  onClick={() => {
+                    const newLimit = newsLimit + 15;
+                    setNewsLimit(newLimit);
+                    fetchNews(selected, newLimit);
+                  }}
+                  style={{
+                    padding: "10px 24px",
+                    borderRadius: "10px",
+                    border: "1px solid rgba(99,102,241,0.2)",
+                    background: "rgba(99,102,241,0.08)",
+                    color: "var(--color-accent-secondary)",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(99,102,241,0.15)";
+                    e.currentTarget.style.borderColor = "rgba(99,102,241,0.4)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "rgba(99,102,241,0.08)";
+                    e.currentTarget.style.borderColor = "rgba(99,102,241,0.2)";
+                  }}
+                >
+                  <span>Load more news</span>
+                  <span style={{ fontSize: "14px" }}>↓</span>
+                </button>
               </div>
             )}
 
