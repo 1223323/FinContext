@@ -1683,9 +1683,9 @@ export default function AnalysisView({ initialTicker, onBack, backLabel = "Back"
               </div>
 
               {/* Catalysts — only render if non-empty. Editorial timeline. */}
-              {deepDive.catalysts && deepDive.catalysts.length > 0 && (
-                <Card>
-                  <SectionLabel>Catalyst timeline</SectionLabel>
+              <Card>
+                <SectionLabel>Catalyst timeline</SectionLabel>
+                {deepDive.catalysts && deepDive.catalysts.length > 0 ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                     {deepDive.catalysts.map((cat, i) => (
                       <div key={i} style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
@@ -1729,13 +1729,15 @@ export default function AnalysisView({ initialTicker, onBack, backLabel = "Back"
                       </div>
                     ))}
                   </div>
-                </Card>
-              )}
+                ) : (
+                  <p style={{ fontSize: "13px", color: "var(--color-text-muted)", fontStyle: "italic" }}>No upcoming catalysts identified in recent news.</p>
+                )}
+              </Card>
 
               {/* Alternatives — same-sector peers with higher ROE. */}
-              {deepDive.alternatives && deepDive.alternatives.length > 0 && (
-                <Card>
-                  <SectionLabel>Same-sector peers worth comparing</SectionLabel>
+              <Card>
+                <SectionLabel>Same-sector peers worth comparing</SectionLabel>
+                {deepDive.alternatives && deepDive.alternatives.length > 0 ? (
                   <div className="responsive-grid-2" style={{ gap: "14px" }}>
                     {deepDive.alternatives.map((alt, i) => (
                       <div
@@ -1772,8 +1774,10 @@ export default function AnalysisView({ initialTicker, onBack, backLabel = "Back"
                       </div>
                     ))}
                   </div>
-                </Card>
-              )}
+                ) : (
+                  <p style={{ fontSize: "13px", color: "var(--color-text-muted)", fontStyle: "italic" }}>No higher-ROE sector peers found for comparison.</p>
+                )}
+              </Card>
 
               {/* Price chart */}
               <StockChart ticker={ticker} stockName={deepDive?.company || ticker} />

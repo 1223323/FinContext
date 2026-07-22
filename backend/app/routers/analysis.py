@@ -17,7 +17,7 @@ import asyncio
 import json
 import logging
 
-from app.nse_universe import TICKER_TO_META
+from app.nse_universe import TICKER_TO_META, resolve_yf_symbol
 from app.agents import base as agents_base
 from app.agents.crews import narrative as narrative_crew
 from app.core.compliance import with_disclaimer
@@ -63,14 +63,23 @@ async def simulate_scenario(req: SimulateRequest):
     if not ai_client.is_available():
         raise HTTPException(status_code=500, detail="AI client not configured")
 
-    context = await asyncio.to_thread(grounding.build_stock_context, ticker)
+    try:
+        context = await asyncio.wait_for(
+            asyncio.to_thread(grounding.build_stock_context, ticker),
+            timeout=30,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Context build timed out")
     if not context["meta"].get("name"):
         raise HTTPException(status_code=404, detail=f"Ticker {ticker} not found")
 
     task = (
         f"Given the scenario: \"{req.scenario}\", estimate its impact on "
         f"{context['meta']['name']} ({ticker}). Reason from the company's real financials, "
-        f"recent news, and sector peer medians in CONTEXT. Quantify only what CONTEXT supports. "
+        f"recent news, and sector peer medians in CONTEXT. \n\n"
+        f"DEPTH: Provide detailed reasoning with specific financial metrics from CONTEXT. "
+        f"Include at least 3 specific data points from the company's financials in your rationale. "
+        f"Quantify only what CONTEXT supports. "
         f"If margin/revenue impact cannot be derived from CONTEXT, return null."
     )
     schema = """{
@@ -82,9 +91,13 @@ async def simulate_scenario(req: SimulateRequest):
   "confidence": "low" | "medium" | "high",
   "data_gaps": [ str, ... ]
 }"""
-    data = await asyncio.to_thread(
-        ai_client.generate_grounded_json, task, context, schema, 1024
-    )
+    try:
+        data = await asyncio.wait_for(
+            asyncio.to_thread(ai_client.generate_grounded_json, task, context, schema, 1500),
+            timeout=60,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="AI analysis timed out")
     if not data:
         raise HTTPException(status_code=502, detail="AI returned unparseable response")
 
@@ -133,6 +146,12 @@ async def dd_agent_generator(ticker: str):
 
     try:
         context = await asyncio.to_thread(grounding.build_stock_context, ticker)
+        # Enrich with detailed ratios for deeper ELI5 analysis
+        try:
+            ratios = await asyncio.to_thread(fundamentals.get_ratios, ticker)
+            context["detailed_ratios"] = ratios
+        except Exception:
+            pass
     except Exception as e:
         yield f"data: {json.dumps({'type':'step','message':f'Context build failed: {e}'})}\n\n"
         yield "data: [DONE]\n\n"
@@ -140,21 +159,26 @@ async def dd_agent_generator(ticker: str):
 
     task = (
         f"Explain the financial story of {meta['name']} ({ticker}) to a retail investor "
-        f"(Explain Like I'm 5) using ONLY the facts in CONTEXT. Pros/cons must reference "
-        f"specific ratios, peer medians, or news items from CONTEXT."
+        f"(Explain Like I'm 5) using ONLY the facts in CONTEXT. \n\n"
+        f"DEPTH REQUIREMENTS:\n"
+        f"• Include specific numbers: P/E ratio, ROE, debt-to-equity, revenue growth, profit margin.\n"
+        f"• Explain what each metric means in simple terms (e.g. 'ROE of 22% means for every ₹100 invested, the company earns ₹22').\n"
+        f"• Compare to sector peers using CONTEXT.peer_benchmark when available.\n"
+        f"• Reference recent news from CONTEXT.news if relevant.\n"
+        f"• Pros/cons must reference specific ratios, peer medians, or news items from CONTEXT."
     )
     schema = """{
   "analogy": str,
   "health_score": int (1-100) | null,
-  "pros": [ { "text": str, "source": str }, ... 2 items ],
-  "cons": [ { "text": str, "source": str }, ... 2 items ],
+  "pros": [ { "text": str, "source": str }, ... 3-5 items ],
+  "cons": [ { "text": str, "source": str }, ... 3-5 items ],
   "bottom_line": str,
   "confidence": "low" | "medium" | "high",
   "data_gaps": [ str, ... ]
 }"""
     try:
         data = await asyncio.wait_for(
-            asyncio.to_thread(ai_client.generate_grounded_json, task, context, schema, 1024),
+            asyncio.to_thread(ai_client.generate_grounded_json, task, context, schema, 2048),
             timeout=45,
         )
     except asyncio.TimeoutError:
@@ -238,9 +262,13 @@ async def _narrative_legacy_path(text: str) -> dict:
   "confidence": "low" | "medium" | "high",
   "data_gaps": [ str, ... ]
 }"""
-    data = await asyncio.to_thread(
-        ai_client.generate_grounded_json, task, context, schema, 1024
-    )
+    try:
+        data = await asyncio.wait_for(
+            asyncio.to_thread(ai_client.generate_grounded_json, task, context, schema, 1024),
+            timeout=45,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Narrative analysis timed out")
     if not data:
         raise HTTPException(status_code=502, detail="AI returned unparseable response")
     return data
@@ -385,20 +413,16 @@ async def deep_dive_generator(ticker: str):
     "stance": "EXPENSIVE" | "FAIR" | "CHEAP",
     "basis": { "text": str, "source": str }   // cite P/E vs peer median + 52w position
   },
-  "bull_case": [                    // EXACTLY 3 items, each falsifiable + cited
-    { "text": str, "source": str },
-    { "text": str, "source": str },
+  "bull_case": [                    // 3-5 items, each falsifiable + cited
     { "text": str, "source": str }
   ],
-  "bear_case": [                    // EXACTLY 3 items, each falsifiable + cited
-    { "text": str, "source": str },
-    { "text": str, "source": str },
+  "bear_case": [                    // 3-5 items, each falsifiable + cited
     { "text": str, "source": str }
   ],
-  "key_risks": [                    // 2-3 STOCK-SPECIFIC risks (not generic)
+  "key_risks": [                    // 3-5 STOCK-SPECIFIC risks (not generic)
     { "text": str, "source": str }
   ],
-  "what_to_watch": [                // EXACTLY 3 concrete, observable triggers
+  "what_to_watch": [                // 3-5 concrete, observable triggers
     { "trigger": str, "why": str }
   ],
   "catalysts": [
@@ -418,7 +442,7 @@ async def deep_dive_generator(ticker: str):
 
     try:
         data = await asyncio.wait_for(
-            asyncio.to_thread(ai_client.generate_grounded_json, task, context, schema, 4000),
+            asyncio.to_thread(ai_client.generate_grounded_json, task, context, schema, 5000),
             timeout=90,
         )
     except asyncio.TimeoutError:
@@ -617,6 +641,25 @@ async def swing_dive_generator(ticker: str):
 
     try:
         context = await asyncio.to_thread(grounding.build_stock_context, ticker)
+        # Enrich with detailed ratios for deeper swing analysis
+        try:
+            ratios = await asyncio.to_thread(fundamentals.get_ratios, ticker)
+            context["detailed_ratios"] = ratios
+            # Backfill null snapshot metrics
+            snap = context.get("snapshot") or {}
+            r_prof = ratios.get("profitability") or {}
+            r_growth = ratios.get("growth") or {}
+            r_health = ratios.get("financial_health") or {}
+            if snap.get("roe_pct") is None and r_prof.get("roe") is not None:
+                snap["roe_pct"] = r_prof["roe"]
+            if snap.get("profit_margin_pct") is None and r_prof.get("profit_margin") is not None:
+                snap["profit_margin_pct"] = r_prof["profit_margin"]
+            if snap.get("revenue_growth_pct") is None and r_growth.get("revenue_growth") is not None:
+                snap["revenue_growth_pct"] = r_growth["revenue_growth"]
+            if snap.get("debt_to_equity") is None and r_health.get("debt_to_equity") is not None:
+                snap["debt_to_equity"] = r_health["debt_to_equity"]
+        except Exception:
+            pass
     except Exception as e:
         yield f"data: {json.dumps({'type':'error','message':f'Context build failed: {e}'})}\n\n"
         yield "data: [DONE]\n\n"
@@ -672,17 +715,13 @@ async def swing_dive_generator(ticker: str):
     "volume_read": str,                   // "Volume 1.8× 20d avg — accumulation"
     "score_0_100": int                    // composite momentum score
   },
-  "bull_case": [                          // EXACTLY 3, SHORT-TERM only
-    { "text": str, "source": str },
-    { "text": str, "source": str },
+  "bull_case": [                          // 3-5, SHORT-TERM only
     { "text": str, "source": str }
   ],
-  "bear_case": [                          // EXACTLY 3, SHORT-TERM only
-    { "text": str, "source": str },
-    { "text": str, "source": str },
+  "bear_case": [                          // 3-5, SHORT-TERM only
     { "text": str, "source": str }
   ],
-  "what_to_watch": [                      // EXACTLY 3 observable triggers
+  "what_to_watch": [                      // 3-5 observable triggers
     { "trigger": str, "why": str }
   ],
   "key_risks": [                          // 2-3 short-term, stock-specific risks
@@ -695,7 +734,7 @@ async def swing_dive_generator(ticker: str):
 
     try:
         data = await asyncio.wait_for(
-            asyncio.to_thread(ai_client.generate_grounded_json, task, context, schema, 3000),
+            asyncio.to_thread(ai_client.generate_grounded_json, task, context, schema, 4000),
             timeout=80,
         )
     except asyncio.TimeoutError:
@@ -904,7 +943,10 @@ async def pre_trade_check(req: PreTradeCheckRequest):
     ticker = req.ticker.upper()
     meta = TICKER_TO_META.get(ticker)
     if not meta:
-        raise HTTPException(status_code=404, detail=f"Ticker {ticker} not found in NSE universe")
+        # Allow non-curated tickers — resolve_yf_symbol falls back to {TICKER}.NS
+        if not resolve_yf_symbol(ticker):
+            raise HTTPException(status_code=404, detail=f"Ticker {ticker} not found")
+        meta = {"name": ticker, "sector": "Unknown"}
 
     # Both calls hit caches first — sub-second when warm. Run them concurrently.
     context_task = asyncio.to_thread(grounding.build_stock_context, ticker, False, 0)

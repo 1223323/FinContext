@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 from app.core.compliance import with_disclaimer
 from app.services import (
     ai_client,
+    fundamentals,
     grounding,
     market_data,
     outcome_ledger,
@@ -183,6 +184,39 @@ async def _intelligence_generator(raw_holdings: list[dict]):
         yield f"data: {json.dumps({'type':'error','message':f'Context build failed: {e}'})}\n\n"
         yield "data: [DONE]\n\n"
         return
+
+    # Enrich top holdings with detailed financial ratios — the LLM's
+    # per-holding thesis cards need ROE, margins, growth, D/E etc. that
+    # the snapshot alone may not carry.  We only fetch for the top 6 by
+    # weight (same set the LLM writes thesis cards for) to bound cost.
+    holdings_by_weight = sorted(
+        context.get("holdings") or [],
+        key=lambda h: abs(h.get("weight_pct", 0)),
+        reverse=True,
+    )[:6]
+    for holding in holdings_by_weight:
+        tk = holding.get("ticker", "")
+        try:
+            ratios = fundamentals.get_ratios(tk)
+            holding["detailed_ratios"] = ratios
+            # Backfill null snapshot metrics from detailed ratios
+            snap = holding.get("snapshot") or {}
+            r_prof = ratios.get("profitability") or {}
+            r_growth = ratios.get("growth") or {}
+            r_health = ratios.get("financial_health") or {}
+            r_val = ratios.get("valuation") or {}
+            if snap.get("roe_pct") is None and r_prof.get("roe") is not None:
+                snap["roe_pct"] = r_prof["roe"]
+            if snap.get("profit_margin_pct") is None and r_prof.get("profit_margin") is not None:
+                snap["profit_margin_pct"] = r_prof["profit_margin"]
+            if snap.get("revenue_growth_pct") is None and r_growth.get("revenue_growth") is not None:
+                snap["revenue_growth_pct"] = r_growth["revenue_growth"]
+            if snap.get("debt_to_equity") is None and r_health.get("debt_to_equity") is not None:
+                snap["debt_to_equity"] = r_health["debt_to_equity"]
+            if snap.get("pe_ratio") is None and r_val.get("pe_ratio") is not None:
+                snap["pe_ratio"] = r_val["pe_ratio"]
+        except Exception:
+            pass  # Non-critical — the LLM can still work with snapshot alone
 
     # PROMPT TIGHTENING (May 2026) — was producing vague generic output like
     # "consider diversifying" / "monitor closely". The new prompt:

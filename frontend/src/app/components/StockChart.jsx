@@ -48,6 +48,7 @@ function CustomTooltip({ active, payload, label }) {
 export default function StockChart({ ticker, stockName }) {
   const [priceData, setPriceData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
   const [timeframe, setTimeframe] = useState("1M");
 
   // Map UI timeframe labels to API period query values.
@@ -56,6 +57,7 @@ export default function StockChart({ ticker, stockName }) {
   useEffect(() => {
     if (!ticker) return;
     setLoading(true);
+    setFetchError(false);
 
     const period = PERIOD_MAP[timeframe] || "1mo";
     fetch(`${API_BASE}/api/stocks/${ticker}/price?period=${period}`)
@@ -64,7 +66,7 @@ export default function StockChart({ ticker, stockName }) {
         setPriceData(data.data || []);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => { setLoading(false); setFetchError(true); });
   }, [ticker, timeframe]);
 
   if (!ticker) {
@@ -156,6 +158,15 @@ export default function StockChart({ ticker, stockName }) {
       </div>
 
       {/* Chart */}
+      {fetchError && !loading && priceData.length === 0 && (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "300px", gap: "12px" }}>
+          <p style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>Unable to load price history for this ticker.</p>
+          <button
+            onClick={() => { setFetchError(false); setLoading(true); const period = PERIOD_MAP[timeframe] || "1mo"; fetch(`${API_BASE}/api/stocks/${ticker}/price?period=${period}`).then(r => r.json()).then(d => { setPriceData(d.data || []); setLoading(false); }).catch(() => { setLoading(false); setFetchError(true); }); }}
+            style={{ padding: "6px 16px", borderRadius: "8px", border: "1px solid var(--border-subtle)", background: "transparent", color: "var(--color-text-secondary)", fontSize: "12px", cursor: "pointer" }}
+          >Retry</button>
+        </div>
+      )}
       {loading ? (
         <div>
           <LoaderHeader label="Loading price history…" />

@@ -184,6 +184,9 @@ export default function AnalysisDDAgent({ ticker, stockName }) {
                     <span style={{ color: "var(--color-accent-green)", fontSize: "18px" }}>✓</span> {claimText(point)}
                   </li>
                 ))}
+                {(!result.pros || result.pros.length === 0) && (
+                  <p style={{ fontSize: "13px", color: "var(--color-text-muted)", fontStyle: "italic", padding: "8px 0" }}>No clear positives surfaced from available data.</p>
+                )}
               </ul>
             </div>
 
@@ -198,6 +201,9 @@ export default function AnalysisDDAgent({ ticker, stockName }) {
                     <span style={{ color: "var(--color-accent-red)", fontSize: "18px" }}>✕</span> {claimText(point)}
                   </li>
                 ))}
+                {(!result.cons || result.cons.length === 0) && (
+                  <p style={{ fontSize: "13px", color: "var(--color-text-muted)", fontStyle: "italic", padding: "8px 0" }}>No clear negatives surfaced from available data.</p>
+                )}
               </ul>
             </div>
           </div>
